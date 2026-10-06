@@ -68,3 +68,42 @@ test(
     );
   },
 );
+
+test(
+  'ignora diferencias puramente de espacios y saltos de línea',
+  () => {
+    const result =
+      calculateOcrMetrics(
+        [
+          'NIT: 1020304050',
+          'Código: TEVI-001-2026',
+        ].join('\n'),
+        [
+          'NIT: 1020304050',
+          '',
+          '',
+          'Código:   TEVI-001-2026',
+        ].join('\n'),
+      );
+
+    assert.equal(
+      result.characterDistance,
+      0,
+    );
+
+    assert.equal(
+      result.wordDistance,
+      0,
+    );
+
+    assert.equal(
+      result.cer,
+      0,
+    );
+
+    assert.equal(
+      result.wer,
+      0,
+    );
+  },
+);

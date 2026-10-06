@@ -3,8 +3,6 @@ export function normalizeBenchmarkText(
 ): string {
   return input
     .normalize('NFC')
-    .replace(/\r\n?/gu, '\n')
-    .replace(/[ \t]+/gu, ' ')
-    .replace(/ *\n */gu, '\n')
+    .replace(/\s+/gu, ' ')
     .trim();
 }

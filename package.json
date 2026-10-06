@@ -10,7 +10,9 @@
     "test:unit": "NODE_ENV=test node --import tsx --test tests/unit/**/*.test.ts",
     "test:integration": "NODE_ENV=test node --import tsx --test tests/integration/**/*.test.ts",
     "benchmark": "tsx benchmark/run.ts",
-    "check": "npm run build && npm test"
+    "check": "npm run build && npm test",
+    "benchmark:generate": "tsx scripts/generate-baseline-corpus.ts",
+    "benchmark:baseline": "npm run benchmark:generate && tsx benchmark/run.ts"
   },
   "keywords": [],
   "author": "",
