@@ -12,5 +12,7 @@ export const config = Object.freeze({
 
   ocr: {
     language: 'spa',
+    pdfDpi: 200,
+    maxPdfPages: 3,
   },
 });
