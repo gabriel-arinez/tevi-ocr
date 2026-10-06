@@ -14,7 +14,12 @@
     "benchmark:generate": "tsx scripts/generate-baseline-corpus.ts",
     "benchmark:baseline": "npm run benchmark:generate && tsx benchmark/run.ts",
     "test:camera-client": "node --test tests/browser/*.test.mjs",
-    "benchmark:preprocessing": "tsx benchmark/preprocessing.ts"
+    "benchmark:preprocessing": "tsx benchmark/preprocessing.ts",
+    "benchmark:ocr-psm": "tsx benchmark/ocr-psm.ts",
+    "benchmark:ocr-language-model": "tsx benchmark/ocr-language-model.ts",
+    "benchmark:ocr-traineddata": "tsx benchmark/ocr-traineddata.ts",
+    "benchmark:ocr-region-specialization": "tsx benchmark/ocr-region-specialization.ts",
+    "benchmark:ocr-contextual-normalization": "tsx benchmark/ocr-contextual-normalization.ts"
   },
   "keywords": [],
   "author": "",
