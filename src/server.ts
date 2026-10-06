@@ -16,6 +16,10 @@ import {
 } from './files/prepare-ocr-input.js';
 
 import {
+  resolveDocumentSource,
+} from './files/document-source.js';
+
+import {
   TesseractOcrEngine,
 } from './ocr/tesseract-engine.js';
 
@@ -80,6 +84,9 @@ app.post(
       const documentInput =
         createDocumentInput(
           request.file,
+          resolveDocumentSource(
+            request.body?.source,
+          ),
         );
 
       const prepared =

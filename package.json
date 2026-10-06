@@ -10,9 +10,10 @@
     "test:unit": "NODE_ENV=test node --import tsx --test tests/unit/**/*.test.ts",
     "test:integration": "NODE_ENV=test node --import tsx --test tests/integration/**/*.test.ts",
     "benchmark": "tsx benchmark/run.ts",
-    "check": "npm run build && npm test",
+    "check": "npm run build && npm test && npm run test:camera-client",
     "benchmark:generate": "tsx scripts/generate-baseline-corpus.ts",
-    "benchmark:baseline": "npm run benchmark:generate && tsx benchmark/run.ts"
+    "benchmark:baseline": "npm run benchmark:generate && tsx benchmark/run.ts",
+    "test:camera-client": "node --test tests/browser/*.test.mjs"
   },
   "keywords": [],
   "author": "",

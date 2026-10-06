@@ -1,0 +1,175 @@
+:root {
+  font-family:
+    system-ui,
+    sans-serif;
+
+  color:
+    #172033;
+
+  background:
+    #f4f6f8;
+}
+
+* {
+  box-sizing:
+    border-box;
+}
+
+body {
+  margin: 0;
+}
+
+button {
+  border: 0;
+  border-radius: 8px;
+  padding:
+    0.75rem
+    1rem;
+
+  font:
+    inherit;
+
+  font-weight: 600;
+
+  cursor: pointer;
+
+  background:
+    #1f5eff;
+
+  color:
+    white;
+}
+
+button.secondary {
+  background:
+    #e8edf5;
+
+  color:
+    #172033;
+}
+
+.shell {
+  width:
+    min(
+      900px,
+      calc(100% - 2rem)
+    );
+
+  margin:
+    2rem auto;
+
+  display:
+    grid;
+
+  gap:
+    1rem;
+}
+
+.card {
+  background:
+    white;
+
+  border-radius:
+    12px;
+
+  padding:
+    1.25rem;
+
+  box-shadow:
+    0 4px 18px
+    rgb(0 0 0 / 6%);
+}
+
+.actions,
+.section-heading {
+  display:
+    flex;
+
+  gap:
+    0.75rem;
+
+  flex-wrap:
+    wrap;
+
+  align-items:
+    center;
+}
+
+.section-heading {
+  justify-content:
+    space-between;
+}
+
+.eyebrow {
+  margin-bottom:
+    0.25rem;
+
+  font-size:
+    0.8rem;
+
+  font-weight:
+    700;
+
+  text-transform:
+    uppercase;
+
+  letter-spacing:
+    0.08em;
+}
+
+.camera-frame {
+  margin:
+    1rem 0;
+
+  overflow:
+    hidden;
+
+  border-radius:
+    10px;
+
+  background:
+    #10141d;
+}
+
+.camera-frame video,
+.camera-frame img {
+  display:
+    block;
+
+  width:
+    100%;
+
+  max-height:
+    70vh;
+
+  object-fit:
+    contain;
+}
+
+.result {
+  min-height:
+    8rem;
+
+  margin:
+    0;
+
+  white-space:
+    pre-wrap;
+
+  word-break:
+    break-word;
+}
+
+@media (
+  max-width: 600px
+) {
+  .shell {
+    margin:
+      1rem auto;
+  }
+
+  .actions button {
+    flex:
+      1 1 auto;
+  }
+}

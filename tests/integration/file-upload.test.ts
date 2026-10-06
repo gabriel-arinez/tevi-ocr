@@ -712,3 +712,135 @@ test(
     );
   },
 );
+
+test(
+  'conserva camera como origen de una captura enviada al OCR',
+  async () => {
+    await withServer(
+      async (baseUrl) => {
+        const jpeg =
+          await fs.readFile(
+            'tests/fixtures/printed/printed-clean.jpg',
+          );
+
+        const form =
+          new FormData();
+
+        form.append(
+          'file',
+          new Blob(
+            [jpeg],
+            {
+              type:
+                'image/jpeg',
+            },
+          ),
+          'camera-capture.jpg',
+        );
+
+        form.append(
+          'source',
+          'camera',
+        );
+
+        const response =
+          await fetch(
+            `${baseUrl}/api/ocr/file`,
+            {
+              method: 'POST',
+              body: form,
+            },
+          );
+
+        assert.equal(
+          response.status,
+          200,
+        );
+
+        const payload =
+          await response.json() as {
+            document: {
+              source: string;
+              kind: string;
+            };
+            ocr: {
+              text: string;
+            };
+          };
+
+        assert.equal(
+          payload.document.source,
+          'camera',
+        );
+
+        assert.equal(
+          payload.document.kind,
+          'jpeg',
+        );
+
+        assert.match(
+          payload.ocr.text,
+          /SERVICIO DE IMPUESTOS NACIONALES/,
+        );
+      },
+    );
+  },
+);
+
+test(
+  'rechaza PDF enviado falsamente como origen camera',
+  async () => {
+    await withServer(
+      async (baseUrl) => {
+        const pdf =
+          await fs.readFile(
+            'tests/fixtures/printed/printed-clean.pdf',
+          );
+
+        const form =
+          new FormData();
+
+        form.append(
+          'file',
+          new Blob(
+            [pdf],
+            {
+              type:
+                'application/pdf',
+            },
+          ),
+          'captura.pdf',
+        );
+
+        form.append(
+          'source',
+          'camera',
+        );
+
+        const response =
+          await fetch(
+            `${baseUrl}/api/ocr/file`,
+            {
+              method: 'POST',
+              body: form,
+            },
+          );
+
+        assert.equal(
+          response.status,
+          400,
+        );
+
+        const payload =
+          await response.json() as {
+            error: string;
+          };
+
+        assert.equal(
+          payload.error,
+          'INVALID_DOCUMENT',
+        );
+      },
+    );
+  },
+);

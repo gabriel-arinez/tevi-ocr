@@ -4,6 +4,7 @@ import {
 
 import type {
   DocumentInput,
+  DocumentSource,
 } from '../core/document-input.js';
 
 import {
@@ -20,6 +21,7 @@ export class InvalidDocumentError
 
 export function createDocumentInput(
   file: Express.Multer.File,
+  source: DocumentSource = 'file',
 ): DocumentInput {
   if (
     file.size <= 0 ||
@@ -65,8 +67,17 @@ export function createDocumentInput(
     );
   }
 
+  if (
+    source === 'camera' &&
+    detected.kind === 'pdf'
+  ) {
+    throw new InvalidDocumentError(
+      'Una captura de cámara debe ser una imagen JPEG o PNG.',
+    );
+  }
+
   return {
-    source: 'file',
+    source,
     kind: detected.kind,
     mimeType: detected.mimeType,
     originalName: file.originalname,

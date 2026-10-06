@@ -102,3 +102,30 @@ test(
     );
   },
 );
+
+test(
+  'rechaza PDF declarado como captura de cámara',
+  () => {
+    const buffer =
+      Buffer.from(
+        '%PDF-1.4\n',
+      );
+
+    assert.throws(
+      () =>
+        createDocumentInput(
+          createFile({
+            originalname:
+              'captura.pdf',
+            mimetype:
+              'application/pdf',
+            buffer,
+            size:
+              buffer.length,
+          }),
+          'camera',
+        ),
+      InvalidDocumentError,
+    );
+  },
+);

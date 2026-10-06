@@ -2,37 +2,52 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+
   <meta
     name="viewport"
     content="width=device-width,initial-scale=1"
   >
+
   <title>TEVI OCR</title>
+
+  <link
+    rel="stylesheet"
+    href="/styles.css"
+  >
 </head>
 
 <body>
-  <main>
-    <h1>TEVI OCR</h1>
+  <main class="shell">
+    <header>
+      <p class="eyebrow">
+        Laboratorio independiente
+      </p>
 
-    <p>
-      Laboratorio independiente para pruebas OCR.
-    </p>
+      <h1>TEVI OCR</h1>
 
-    <section>
+      <p>
+        Carga un documento o captura una fotografía para ejecutar OCR.
+      </p>
+    </header>
+
+    <section class="card">
       <h2>Entrada</h2>
 
-      <button
-        id="selectFile"
-        type="button"
-      >
-        Subir archivo
-      </button>
+      <div class="actions">
+        <button
+          id="selectFile"
+          type="button"
+        >
+          Subir archivo
+        </button>
 
-      <button
-        id="openCamera"
-        type="button"
-      >
-        Usar cámara
-      </button>
+        <button
+          id="openCamera"
+          type="button"
+        >
+          Usar cámara
+        </button>
+      </div>
 
       <input
         id="fileInput"
@@ -42,50 +57,94 @@
       >
     </section>
 
-    <section>
+    <section
+      id="cameraPanel"
+      class="card"
+      hidden
+    >
+      <div class="section-heading">
+        <h2>Cámara</h2>
+
+        <button
+          id="closeCamera"
+          type="button"
+          class="secondary"
+        >
+          Cerrar
+        </button>
+      </div>
+
+      <div class="camera-frame">
+        <video
+          id="cameraVideo"
+          autoplay
+          muted
+          playsinline
+        ></video>
+
+        <img
+          id="capturedImage"
+          alt="Fotografía capturada"
+          hidden
+        >
+
+        <canvas
+          id="cameraCanvas"
+          hidden
+        ></canvas>
+      </div>
+
+      <div class="actions">
+        <button
+          id="capturePhoto"
+          type="button"
+        >
+          Capturar
+        </button>
+
+        <button
+          id="retryPhoto"
+          type="button"
+          class="secondary"
+          hidden
+        >
+          Repetir
+        </button>
+
+        <button
+          id="usePhoto"
+          type="button"
+          hidden
+        >
+          Usar foto
+        </button>
+      </div>
+    </section>
+
+    <section class="card">
       <h2>Estado</h2>
-      <p id="status">
-        Foundation inicial operativa.
+
+      <p
+        id="status"
+        aria-live="polite"
+      >
+        Listo para procesar un documento.
       </p>
+    </section>
+
+    <section class="card">
+      <h2>Resultado OCR</h2>
+
+      <pre
+        id="ocrResult"
+        class="result"
+      ></pre>
     </section>
   </main>
 
-  <script type="module">
-    const fileInput =
-      document.getElementById('fileInput');
-
-    const status =
-      document.getElementById('status');
-
-    document
-      .getElementById('selectFile')
-      .addEventListener(
-        'click',
-        () => fileInput.click(),
-      );
-
-    fileInput.addEventListener(
-      'change',
-      () => {
-        const file =
-          fileInput.files?.[0];
-
-        status.textContent =
-          file
-            ? `Archivo seleccionado: ${file.name}`
-            : 'No se seleccionó archivo.';
-      },
-    );
-
-    document
-      .getElementById('openCamera')
-      .addEventListener(
-        'click',
-        () => {
-          status.textContent =
-            'La cámara se implementará en su fase dedicada.';
-        },
-      );
-  </script>
+  <script
+    type="module"
+    src="/app.js"
+  ></script>
 </body>
 </html>
