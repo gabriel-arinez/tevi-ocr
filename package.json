@@ -1,0 +1,37 @@
+{
+  "name": "tevi-ocr",
+  "version": "0.1.0",
+  "description": "Laboratorio independiente para evaluación, mejora y validación OCR previa a integración con TEVI.",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "build": "tsc --noEmit",
+    "test": "NODE_ENV=test node --import tsx --test tests/**/*.test.ts",
+    "test:unit": "NODE_ENV=test node --import tsx --test tests/unit/**/*.test.ts",
+    "test:integration": "NODE_ENV=test node --import tsx --test tests/integration/**/*.test.ts",
+    "benchmark": "tsx benchmark/run.ts",
+    "check": "npm run build && npm test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@tesseract.js-data/spa": "^1.0.0",
+    "express": "^5.2.1",
+    "multer": "^2.4.0",
+    "pdf-parse": "^2.4.5",
+    "sharp": "^0.35.5",
+    "tesseract.js": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/multer": "^2.3.0",
+    "@types/node": "^26.6.4",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  }
+}

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  >
+  <title>TEVI OCR</title>
+</head>
+
+<body>
+  <main>
+    <h1>TEVI OCR</h1>
+
+    <p>
+      Laboratorio independiente para pruebas OCR.
+    </p>
+
+    <section>
+      <h2>Entrada</h2>
+
+      <button
+        id="selectFile"
+        type="button"
+      >
+        Subir archivo
+      </button>
+
+      <button
+        id="openCamera"
+        type="button"
+      >
+        Usar cámara
+      </button>
+
+      <input
+        id="fileInput"
+        type="file"
+        accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+        hidden
+      >
+    </section>
+
+    <section>
+      <h2>Estado</h2>
+      <p id="status">
+        Foundation inicial operativa.
+      </p>
+    </section>
+  </main>
+
+  <script type="module">
+    const fileInput =
+      document.getElementById('fileInput');
+
+    const status =
+      document.getElementById('status');
+
+    document
+      .getElementById('selectFile')
+      .addEventListener(
+        'click',
+        () => fileInput.click(),
+      );
+
+    fileInput.addEventListener(
+      'change',
+      () => {
+        const file =
+          fileInput.files?.[0];
+
+        status.textContent =
+          file
+            ? `Archivo seleccionado: ${file.name}`
+            : 'No se seleccionó archivo.';
+      },
+    );
+
+    document
+      .getElementById('openCamera')
+      .addEventListener(
+        'click',
+        () => {
+          status.textContent =
+            'La cámara se implementará en su fase dedicada.';
+        },
+      );
+  </script>
+</body>
+</html>
