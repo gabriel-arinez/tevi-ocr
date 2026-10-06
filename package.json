@@ -13,7 +13,8 @@
     "check": "npm run build && npm test && npm run test:camera-client",
     "benchmark:generate": "tsx scripts/generate-baseline-corpus.ts",
     "benchmark:baseline": "npm run benchmark:generate && tsx benchmark/run.ts",
-    "test:camera-client": "node --test tests/browser/*.test.mjs"
+    "test:camera-client": "node --test tests/browser/*.test.mjs",
+    "benchmark:preprocessing": "tsx benchmark/preprocessing.ts"
   },
   "keywords": [],
   "author": "",

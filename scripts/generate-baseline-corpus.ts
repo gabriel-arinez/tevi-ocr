@@ -165,6 +165,9 @@ async function addDeterministicNoise(
       raw: info,
     },
   )
+    .withMetadata({
+      density: 144,
+    })
     .png()
     .toBuffer();
 }
@@ -251,12 +254,150 @@ async function main(): Promise<void> {
     rotated,
   );
 
+  const gaussianBlur =
+    await sharp(clean)
+      .blur(2.2)
+      .png()
+      .toBuffer();
+
+  await fs.writeFile(
+    'tests/fixtures/degraded/gaussian-blur.png',
+    gaussianBlur,
+  );
+
+  const jpegArtifacts =
+    await sharp(clean)
+      .jpeg({
+        quality: 28,
+        chromaSubsampling: '4:2:0',
+      })
+      .png()
+      .toBuffer();
+
+  await fs.writeFile(
+    'tests/fixtures/degraded/jpeg-artifacts.png',
+    jpegArtifacts,
+  );
+
+  const strongLowResolution =
+    await sharp(clean)
+      .resize({
+        width: 260,
+      })
+      .resize({
+        width: 1800,
+      })
+      .png()
+      .toBuffer();
+
+  await fs.writeFile(
+    'tests/fixtures/degraded/strong-low-resolution.png',
+    strongLowResolution,
+  );
+
+  const rotation8 =
+    await sharp(clean)
+      .rotate(
+        8,
+        {
+          background: '#ffffff',
+        },
+      )
+      .png()
+      .toBuffer();
+
+  await fs.writeFile(
+    'tests/fixtures/degraded/rotation-8deg.png',
+    rotation8,
+  );
+
+  const unevenSvg = Buffer.from(`
+    <svg
+      width="1800"
+      height="1000"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <defs>
+        <linearGradient
+          id="light"
+          x1="0%"
+          y1="0%"
+          x2="100%"
+          y2="100%"
+        >
+          <stop
+            offset="0%"
+            stop-color="#ffffff"
+            stop-opacity="0"
+          />
+          <stop
+            offset="100%"
+            stop-color="#000000"
+            stop-opacity="0.45"
+          />
+        </linearGradient>
+      </defs>
+
+      <image
+        href="data:image/png;base64,${clean.toString('base64')}"
+        width="1800"
+        height="1000"
+      />
+
+      <rect
+        width="100%"
+        height="100%"
+        fill="url(#light)"
+      />
+    </svg>
+  `);
+
+  const unevenLight =
+    await sharp(
+      unevenSvg,
+      {
+        density: 144,
+      },
+    )
+      .png()
+      .toBuffer();
+
+  await fs.writeFile(
+    'tests/fixtures/degraded/uneven-light.png',
+    unevenLight,
+  );
+
+  const mixedNoiseBase =
+    await sharp(clean)
+      .blur(0.7)
+      .jpeg({
+        quality: 45,
+      })
+      .png()
+      .toBuffer();
+
+  const mixedNoise =
+    await addDeterministicNoise(
+      mixedNoiseBase,
+    );
+
+  await fs.writeFile(
+    'tests/fixtures/degraded/mixed-noise.png',
+    mixedNoise,
+  );
+
   const baseCases = [
     'printed-clean',
     'low-contrast',
     'noisy',
     'low-resolution',
     'rotated',
+    'gaussian-blur',
+    'jpeg-artifacts',
+    'strong-low-resolution',
+    'rotation-8deg',
+    'uneven-light',
+    'mixed-noise',
   ];
 
   await Promise.all(

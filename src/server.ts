@@ -119,6 +119,12 @@ app.post(
 
           durationMs:
             result.durationMs,
+
+          detectedAngle:
+            page.detectedAngle,
+
+          preprocessingDurationMs:
+            page.preprocessingDurationMs,
         });
       }
 
@@ -160,6 +166,17 @@ app.post(
           0,
         );
 
+      const preprocessingDurationMs =
+        pageResults.reduce(
+          (
+            total,
+            page,
+          ) =>
+            total +
+            page.preprocessingDurationMs,
+          0,
+        );
+
       response.json({
         ok: true,
 
@@ -194,6 +211,7 @@ app.post(
 
           confidence,
           durationMs,
+          preprocessingDurationMs,
           pages:
             pageResults,
         },

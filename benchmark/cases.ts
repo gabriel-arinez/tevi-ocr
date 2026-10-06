@@ -4,6 +4,12 @@ export type BenchmarkCategory =
   | 'noisy'
   | 'low-resolution'
   | 'rotated'
+  | 'gaussian-blur'
+  | 'jpeg-artifacts'
+  | 'strong-low-resolution'
+  | 'rotation-8deg'
+  | 'uneven-light'
+  | 'mixed-noise'
   | 'confusing-characters';
 
 export interface BenchmarkCase {
@@ -49,6 +55,48 @@ export const benchmarkCases: BenchmarkCase[] = [
     fixturePath: 'tests/fixtures/degraded/rotated.png',
     groundTruthPath: 'benchmark/ground-truth/rotated.txt',
     description: 'Documento con una inclinación moderada.',
+  },
+  {
+    id: 'gaussian-blur',
+    category: 'gaussian-blur',
+    fixturePath: 'tests/fixtures/degraded/gaussian-blur.png',
+    groundTruthPath: 'benchmark/ground-truth/gaussian-blur.txt',
+    description: 'Documento afectado por desenfoque gaussiano reproducible.',
+  },
+  {
+    id: 'jpeg-artifacts',
+    category: 'jpeg-artifacts',
+    fixturePath: 'tests/fixtures/degraded/jpeg-artifacts.png',
+    groundTruthPath: 'benchmark/ground-truth/jpeg-artifacts.txt',
+    description: 'Documento degradado por compresión JPEG agresiva.',
+  },
+  {
+    id: 'strong-low-resolution',
+    category: 'strong-low-resolution',
+    fixturePath: 'tests/fixtures/degraded/strong-low-resolution.png',
+    groundTruthPath: 'benchmark/ground-truth/strong-low-resolution.txt',
+    description: 'Documento con pérdida fuerte de resolución.',
+  },
+  {
+    id: 'rotation-8deg',
+    category: 'rotation-8deg',
+    fixturePath: 'tests/fixtures/degraded/rotation-8deg.png',
+    groundTruthPath: 'benchmark/ground-truth/rotation-8deg.txt',
+    description: 'Documento rotado ocho grados.',
+  },
+  {
+    id: 'uneven-light',
+    category: 'uneven-light',
+    fixturePath: 'tests/fixtures/degraded/uneven-light.png',
+    groundTruthPath: 'benchmark/ground-truth/uneven-light.txt',
+    description: 'Documento con iluminación no uniforme simulada.',
+  },
+  {
+    id: 'mixed-noise',
+    category: 'mixed-noise',
+    fixturePath: 'tests/fixtures/degraded/mixed-noise.png',
+    groundTruthPath: 'benchmark/ground-truth/mixed-noise.txt',
+    description: 'Documento con desenfoque, compresión y ruido combinados.',
   },
   {
     id: 'confusing-characters',

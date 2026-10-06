@@ -844,3 +844,115 @@ test(
     );
   },
 );
+
+test(
+  'preprocesa y corrige documento rotado antes del OCR',
+  async () => {
+    await withServer(
+      async (baseUrl) => {
+        const png =
+          await fs.readFile(
+            'tests/fixtures/degraded/rotated.png',
+          );
+
+        const form =
+          new FormData();
+
+        form.append(
+          'file',
+          new Blob(
+            [png],
+            {
+              type:
+                'image/png',
+            },
+          ),
+          'rotated.png',
+        );
+
+        const response =
+          await fetch(
+            `${baseUrl}/api/ocr/file`,
+            {
+              method:
+                'POST',
+
+              body:
+                form,
+            },
+          );
+
+        assert.equal(
+          response.status,
+          200,
+        );
+
+        const payload =
+          await response.json() as {
+            document: {
+              pages: number;
+            };
+
+            ocr: {
+              text: string;
+
+              preprocessingDurationMs:
+                number;
+
+              pages: Array<{
+                pageNumber: number;
+                detectedAngle: number;
+                preprocessingDurationMs:
+                  number;
+              }>;
+            };
+          };
+
+        assert.equal(
+          payload.document.pages,
+          1,
+        );
+
+        assert.equal(
+          payload.ocr.pages.length,
+          1,
+        );
+
+        assert.ok(
+          payload.ocr.preprocessingDurationMs >
+          0,
+        );
+
+        assert.ok(
+          payload.ocr.pages[0]!
+            .detectedAngle >=
+            -5 &&
+          payload.ocr.pages[0]!
+            .detectedAngle <=
+            -3,
+        );
+
+        assert.ok(
+          payload.ocr.pages[0]!
+            .preprocessingDurationMs >
+            0,
+        );
+
+        assert.match(
+          payload.ocr.text,
+          /SERVICIO DE IMPUESTOS NACIONALES/,
+        );
+
+        assert.match(
+          payload.ocr.text,
+          /TEVI-001-2026/,
+        );
+
+        assert.match(
+          payload.ocr.text,
+          /06\/10\/2026/,
+        );
+      },
+    );
+  },
+);

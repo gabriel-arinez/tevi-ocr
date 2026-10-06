@@ -7,8 +7,6 @@ import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
-import sharp from 'sharp';
-
 import {
   config,
 } from '../core/config.js';
@@ -16,6 +14,10 @@ import {
 import type {
   DocumentInput,
 } from '../core/document-input.js';
+
+import {
+  preprocessForOcr,
+} from '../preprocessing/pipeline.js';
 
 const execFileAsync =
   promisify(execFile);
@@ -33,6 +35,7 @@ export class DocumentPreparationError
     message: string,
   ) {
     super(message);
+
     this.name =
       'DocumentPreparationError';
   }
@@ -41,28 +44,47 @@ export class DocumentPreparationError
 export interface PreparedOcrPage {
   pageNumber: number;
   buffer: Buffer;
+  detectedAngle: number;
+  preprocessingDurationMs: number;
 }
 
 export interface PreparedOcrInput {
   pages: PreparedOcrPage[];
 }
 
+async function preparePage(
+  buffer: Buffer,
+  pageNumber: number,
+): Promise<PreparedOcrPage> {
+  const preprocessed =
+    await preprocessForOcr(
+      buffer,
+    );
+
+  return {
+    pageNumber,
+
+    buffer:
+      preprocessed.buffer,
+
+    detectedAngle:
+      preprocessed.detectedAngle,
+
+    preprocessingDurationMs:
+      preprocessed.durationMs,
+  };
+}
+
 async function prepareImage(
   input: DocumentInput,
 ): Promise<PreparedOcrInput> {
   try {
-    const image =
-      await sharp(input.buffer)
-        .rotate()
-        .png()
-        .toBuffer();
-
     return {
       pages: [
-        {
-          pageNumber: 1,
-          buffer: image,
-        },
+        await preparePage(
+          input.buffer,
+          1,
+        ),
       ],
     };
   } catch {
@@ -87,6 +109,7 @@ async function getPdfPageCount(
         ],
         {
           timeout: 10_000,
+
           maxBuffer:
             1024 * 1024,
         },
@@ -104,10 +127,14 @@ async function getPdfPageCount(
     }
 
     const pages =
-      Number(match[1]);
+      Number(
+        match[1],
+      );
 
     if (
-      !Number.isInteger(pages) ||
+      !Number.isInteger(
+        pages,
+      ) ||
       pages <= 0
     ) {
       throw new Error(
@@ -176,7 +203,9 @@ async function preparePdf(
           '-f',
           '1',
           '-l',
-          String(pageCount),
+          String(
+            pageCount,
+          ),
           '-r',
           String(
             config.ocr.pdfDpi,
@@ -186,6 +215,7 @@ async function preparePdf(
         ],
         {
           timeout: 30_000,
+
           maxBuffer:
             1024 * 1024,
         },
@@ -209,17 +239,30 @@ async function preparePdf(
         `${outputPrefix}-${pageNumber}.png`;
 
       try {
-        pages.push({
-          pageNumber,
-          buffer:
-            await fs.readFile(
-              renderedPath,
-            ),
-        });
-      } catch {
+        const rendered =
+          await fs.readFile(
+            renderedPath,
+          );
+
+        pages.push(
+          await preparePage(
+            rendered,
+            pageNumber,
+          ),
+        );
+      } catch (
+        error
+      ) {
+        if (
+          error instanceof
+          DocumentPreparationError
+        ) {
+          throw error;
+        }
+
         throw new DocumentPreparationError(
           'INVALID_PDF',
-          `No fue posible obtener la página ${pageNumber} del PDF.`,
+          `No fue posible preparar la página ${pageNumber} del PDF.`,
         );
       }
     }
@@ -241,12 +284,18 @@ async function preparePdf(
 export async function prepareOcrInput(
   input: DocumentInput,
 ): Promise<PreparedOcrInput> {
-  switch (input.kind) {
+  switch (
+    input.kind
+  ) {
     case 'jpeg':
     case 'png':
-      return prepareImage(input);
+      return prepareImage(
+        input,
+      );
 
     case 'pdf':
-      return preparePdf(input);
+      return preparePdf(
+        input,
+      );
   }
 }
