@@ -1,0 +1,45 @@
+{
+  "policy": {
+    "acceptEnabled": false,
+    "acceptThreshold": null,
+    "fallbackThreshold": 0.7,
+    "reviewThreshold": 0.7,
+    "rationale": {
+      "accept": "disabled because F11.4 found frequent high-confidence errors",
+      "fallback": "highest evaluated threshold whose error-detection precision remains >= 50%"
+    }
+  },
+  "totals": {
+    "scoredCharacters": 1393,
+    "correctCharacters": 976,
+    "errorCharacters": 417,
+    "deletionsWithoutConfidence": 116
+  },
+  "actions": {
+    "accept": {
+      "count": 0,
+      "coverage": 0
+    },
+    "review": {
+      "count": 1035,
+      "coverage": 0.7430007178750897
+    },
+    "fallback": {
+      "count": 358,
+      "coverage": 0.25699928212491024
+    }
+  },
+  "effectiveness": {
+    "errorsCaptured": 189,
+    "errorRecall": 0.45323741007194246,
+    "correctSentToFallback": 169,
+    "correctFallbackRate": 0.17315573770491804,
+    "fallbackPrecision": 0.5279329608938548,
+    "errorsRemainingInReview": 228,
+    "reviewErrorRate": 0.22028985507246376
+  },
+  "expectedCost": {
+    "fallbackCandidateShare": 0.25699928212491024,
+    "interpretation": "F11.6 must measure actual latency; F11.5 only estimates candidate workload."
+  }
+}
