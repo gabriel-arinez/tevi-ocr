@@ -23,7 +23,8 @@
     "validate:handwriting-corpus": "tsx scripts/validate-handwriting-corpus.ts",
     "benchmark:handwriting": "tsx benchmark/handwriting-baseline.ts",
     "benchmark:handwriting-preprocessing": "tsx benchmark/handwriting-preprocessing-matrix.ts",
-    "benchmark:handwriting-final": "bash scripts/run-handwriting-final.sh"
+    "benchmark:handwriting-final": "bash scripts/run-handwriting-final.sh",
+    "benchmark:final": "tsx benchmark/final.ts"
   },
   "keywords": [],
   "author": "",
