@@ -22,7 +22,8 @@
     "benchmark:ocr-contextual-normalization": "tsx benchmark/ocr-contextual-normalization.ts",
     "validate:handwriting-corpus": "tsx scripts/validate-handwriting-corpus.ts",
     "benchmark:handwriting": "tsx benchmark/handwriting-baseline.ts",
-    "benchmark:handwriting-preprocessing": "tsx benchmark/handwriting-preprocessing-matrix.ts"
+    "benchmark:handwriting-preprocessing": "tsx benchmark/handwriting-preprocessing-matrix.ts",
+    "benchmark:handwriting-final": "bash scripts/run-handwriting-final.sh"
   },
   "keywords": [],
   "author": "",
