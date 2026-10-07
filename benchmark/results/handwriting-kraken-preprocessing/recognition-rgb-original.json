@@ -1,0 +1,380 @@
+{
+  "model": "10.5281/zenodo.21788405",
+  "recognizer": "Kraken 7.1.1 / PP-OCRv6 small",
+  "strategy": "rgb-original",
+  "groundTruthUsed": false,
+  "modelLoadSeconds": 0.784580300000016,
+  "totalRecognitionSeconds": 4.024183259003621,
+  "lineCount": 61,
+  "documents": [
+    {
+      "id": "handwritten-print-legible-01",
+      "category": "print-legible",
+      "lineCount": 7,
+      "lines": [
+        {
+          "lineNumber": 1,
+          "text": "Soricio de Impvestos Nacinalos",
+          "recognitionSeconds": 0.10460004400010803
+        },
+        {
+          "lineNumber": 2,
+          "text": "Retnia. Receo tnibitrio gestion 2026",
+          "recognitionSeconds": 0.06191104999925301
+        },
+        {
+          "lineNumber": 3,
+          "text": "El conthibgente solicita reuisioń del trámite",
+          "recognitionSeconds": 0.06427766900014831
+        },
+        {
+          "lineNumber": 4,
+          "text": "VIT: 102030 4050",
+          "recognitionSeconds": 0.05312051099826931
+        },
+        {
+          "lineNumber": 5,
+          "text": "Código: TV:-001-2026",
+          "recognitionSeconds": 0.04412037400106783
+        },
+        {
+          "lineNumber": 6,
+          "text": "Moło Bs. 3,880, 50",
+          "recognitionSeconds": 0.05011462400034361
+        },
+        {
+          "lineNumber": 7,
+          "text": "Fecha: 06/10/26",
+          "recognitionSeconds": 0.046567134000724764
+        }
+      ],
+      "text": "Soricio de Impvestos Nacinalos\nRetnia. Receo tnibitrio gestion 2026\nEl conthibgente solicita reuisioń del trámite\nVIT: 102030 4050\nCódigo: TV:-001-2026\nMoło Bs. 3,880, 50\nFecha: 06/10/26"
+    },
+    {
+      "id": "handwritten-print-legible-02",
+      "category": "print-legible",
+      "lineCount": 7,
+      "lines": [
+        {
+          "lineNumber": 1,
+          "text": "Solicito de Revsión",
+          "recognitionSeconds": 0.04693367800064152
+        },
+        {
+          "lineNumber": 2,
+          "text": "Solicito vcripicar la docamentacioń presentada",
+          "recognitionSeconds": 0.07926018600119278
+        },
+        {
+          "lineNumber": 3,
+          "text": "Gcomunicar coalquier observación pendiente.",
+          "recognitionSeconds": 0.11833799300075043
+        },
+        {
+          "lineNumber": 4,
+          "text": "Nιt: 4587123014",
+          "recognitionSeconds": 0.09388728799967794
+        },
+        {
+          "lineNumber": 5,
+          "text": "Códio: TV-125-2026",
+          "recognitionSeconds": 0.07994032399983553
+        },
+        {
+          "lineNumber": 6,
+          "text": "Monto Bs. 8. S05, 10",
+          "recognitionSeconds": 0.10023290600111068
+        },
+        {
+          "lineNumber": 7,
+          "text": "Fecha: 1S/09/26",
+          "recognitionSeconds": 0.0843800070015277
+        }
+      ],
+      "text": "Solicito de Revsión\nSolicito vcripicar la docamentacioń presentada\nGcomunicar coalquier observación pendiente.\nNιt: 4587123014\nCódio: TV-125-2026\nMonto Bs. 8. S05, 10\nFecha: 1S/09/26"
+    },
+    {
+      "id": "handwritten-cursive-legible-01",
+      "category": "cursive-legible",
+      "lineCount": 7,
+      "lines": [
+        {
+          "lineNumber": 1,
+          "text": "Seiaio de Srpustos Tamales",
+          "recognitionSeconds": 0.09651432600003318
+        },
+        {
+          "lineNumber": 2,
+          "text": "Reyrincia: Recoms tuibutauio geton 2026",
+          "recognitionSeconds": 0.11980340300033276
+        },
+        {
+          "lineNumber": 3,
+          "text": "El cortubryente solicata vosion del trämite",
+          "recognitionSeconds": 0.18398395900112519
+        },
+        {
+          "lineNumber": 4,
+          "text": "NIT: 1020304850",
+          "recognitionSeconds": 0.19160263400044641
+        },
+        {
+          "lineNumber": 5,
+          "text": "Cóhigoν: TU- 0J-2026",
+          "recognitionSeconds": 0.06290725100006966
+        },
+        {
+          "lineNumber": 6,
+          "text": "monto: Bs. 3. 8S0,50",
+          "recognitionSeconds": 0.08691852599986305
+        },
+        {
+          "lineNumber": 7,
+          "text": "Tiecha: 06/10/26",
+          "recognitionSeconds": 0.06296907700016163
+        }
+      ],
+      "text": "Seiaio de Srpustos Tamales\nReyrincia: Recoms tuibutauio geton 2026\nEl cortubryente solicata vosion del trämite\nNIT: 1020304850\nCóhigoν: TU- 0J-2026\nmonto: Bs. 3. 8S0,50\nTiecha: 06/10/26"
+    },
+    {
+      "id": "handwritten-cursive-legible-02",
+      "category": "cursive-legible",
+      "lineCount": 7,
+      "lines": [
+        {
+          "lineNumber": 1,
+          "text": "Solicitud de Reorsion",
+          "recognitionSeconds": 0.05163012400043954
+        },
+        {
+          "lineNumber": 2,
+          "text": "Solicito vriier la ocuentecin ontrda",
+          "recognitionSeconds": 0.07096962400100892
+        },
+        {
+          "lineNumber": 3,
+          "text": "omerior cualgun oaeracion pendinte,",
+          "recognitionSeconds": 0.06374503999904846
+        },
+        {
+          "lineNumber": 4,
+          "text": "N: 45871230я",
+          "recognitionSeconds": 0.051097689000016544
+        },
+        {
+          "lineNumber": 5,
+          "text": "Códlgo TV-12S-2026",
+          "recognitionSeconds": 0.052288265998868155
+        },
+        {
+          "lineNumber": 6,
+          "text": "Monts: Bs. 8. 50, 10",
+          "recognitionSeconds": 0.05742248299975472
+        },
+        {
+          "lineNumber": 7,
+          "text": "Fecha: 15/09/26",
+          "recognitionSeconds": 0.0416373879997991
+        }
+      ],
+      "text": "Solicitud de Reorsion\nSolicito vriier la ocuentecin ontrda\nomerior cualgun oaeracion pendinte,\nN: 45871230я\nCódlgo TV-12S-2026\nMonts: Bs. 8. 50, 10\nFecha: 15/09/26"
+    },
+    {
+      "id": "handwritten-irregular-01",
+      "category": "irregular",
+      "lineCount": 7,
+      "lines": [
+        {
+          "lineNumber": 1,
+          "text": "Servicio de Impestes Nacionales",
+          "recognitionSeconds": 0.05115682100040431
+        },
+        {
+          "lineNumber": 2,
+          "text": "Rérincia: Reobmo trhiterio gestoń 2026",
+          "recognitionSeconds": 0.07098907100044016
+        },
+        {
+          "lineNumber": 3,
+          "text": "El condribogente solicita rausion del tráite",
+          "recognitionSeconds": 0.08345671399911225
+        },
+        {
+          "lineNumber": 4,
+          "text": "NIT: L0203040s0",
+          "recognitionSeconds": 0.0659998569990421
+        },
+        {
+          "lineNumber": 5,
+          "text": "Códio: Tu-00)-226",
+          "recognitionSeconds": 0.04373497300002782
+        },
+        {
+          "lineNumber": 6,
+          "text": "Monte: Bs: 3. 8S9, 50",
+          "recognitionSeconds": 0.06155136300003505
+        },
+        {
+          "lineNumber": 7,
+          "text": "Techa : 06 /20/25",
+          "recognitionSeconds": 0.045583260000057635
+        }
+      ],
+      "text": "Servicio de Impestes Nacionales\nRérincia: Reobmo trhiterio gestoń 2026\nEl condribogente solicita rausion del tráite\nNIT: L0203040s0\nCódio: Tu-00)-226\nMonte: Bs: 3. 8S9, 50\nTecha : 06 /20/25"
+    },
+    {
+      "id": "handwritten-irregular-02",
+      "category": "irregular",
+      "lineCount": 7,
+      "lines": [
+        {
+          "lineNumber": 1,
+          "text": "Solicitod de Reusión",
+          "recognitionSeconds": 0.06318186200041964
+        },
+        {
+          "lineNumber": 2,
+          "text": "Solicito vorificor la dearmmtacion presentada",
+          "recognitionSeconds": 0.08830187400053546
+        },
+        {
+          "lineNumber": 3,
+          "text": "g eomenicor cualquior observoain pend:onte",
+          "recognitionSeconds": 0.07783242499863263
+        },
+        {
+          "lineNumber": 4,
+          "text": "NIT: S87123019",
+          "recognitionSeconds": 0.0423210580011073
+        },
+        {
+          "lineNumber": 5,
+          "text": "Cádig0 Tv- 125 -2026",
+          "recognitionSeconds": 0.053101682000487926
+        },
+        {
+          "lineNumber": 6,
+          "text": "Mont: BS: 8. S0S, 10",
+          "recognitionSeconds": 0.05163665399959427
+        },
+        {
+          "lineNumber": 7,
+          "text": "Fecha:. AS /09/26",
+          "recognitionSeconds": 0.04414859999997134
+        }
+      ],
+      "text": "Solicitod de Reusión\nSolicito vorificor la dearmmtacion presentada\ng eomenicor cualquior observoain pend:onte\nNIT: S87123019\nCádig0 Tv- 125 -2026\nMont: BS: 8. S0S, 10\nFecha:. AS /09/26"
+    },
+    {
+      "id": "handwritten-photo-perspective-01",
+      "category": "photo-perspective",
+      "lineCount": 12,
+      "lines": [
+        {
+          "lineNumber": 1,
+          "text": "Soliaitud de Revisionadé raentada",
+          "recognitionSeconds": 0.08325422699999763
+        },
+        {
+          "lineNumber": 2,
+          "text": "la docurten a o d iene.",
+          "recognitionSeconds": 0.04768448899994837
+        },
+        {
+          "lineNumber": 3,
+          "text": "Solicio uriica la deeen ordi",
+          "recognitionSeconds": 0.06327982699986023
+        },
+        {
+          "lineNumber": 4,
+          "text": "comunicar coal quier",
+          "recognitionSeconds": 0.04695198399895162
+        },
+        {
+          "lineNumber": 5,
+          "text": "ن",
+          "recognitionSeconds": 0.03163809299985587
+        },
+        {
+          "lineNumber": 6,
+          "text": "4587123019",
+          "recognitionSeconds": 0.04284781600108545
+        },
+        {
+          "lineNumber": 7,
+          "text": "-25-2026",
+          "recognitionSeconds": 0.04698654799904034
+        },
+        {
+          "lineNumber": 8,
+          "text": "Códig T",
+          "recognitionSeconds": 0.04016204999970796
+        },
+        {
+          "lineNumber": 9,
+          "text": "8 505, 10",
+          "recognitionSeconds": 0.04076514500047779
+        },
+        {
+          "lineNumber": 10,
+          "text": "Monto Bs",
+          "recognitionSeconds": 0.031374403999507194
+        },
+        {
+          "lineNumber": 11,
+          "text": "15/09/26",
+          "recognitionSeconds": 0.041921625001123175
+        },
+        {
+          "lineNumber": 12,
+          "text": "Fecha",
+          "recognitionSeconds": 0.037053993000881746
+        }
+      ],
+      "text": "Soliaitud de Revisionadé raentada\nla docurten a o d iene.\nSolicio uriica la deeen ordi\ncomunicar coal quier\nن\n4587123019\n-25-2026\nCódig T\n8 505, 10\nMonto Bs\n15/09/26\nFecha"
+    },
+    {
+      "id": "handwritten-photo-low-light-01",
+      "category": "photo-low-light",
+      "lineCount": 7,
+      "lines": [
+        {
+          "lineNumber": 1,
+          "text": "Soliaitod de Ravision",
+          "recognitionSeconds": 0.0393393409995042
+        },
+        {
+          "lineNumber": 2,
+          "text": "Solicito verieicar la docmntacioń prcsontada",
+          "recognitionSeconds": 0.08058737400097016
+        },
+        {
+          "lineNumber": 3,
+          "text": "y comunicar evalquier obsorvaaion pendiente.",
+          "recognitionSeconds": 0.07088256199858733
+        },
+        {
+          "lineNumber": 4,
+          "text": "νιt: 4587123019",
+          "recognitionSeconds": 0.051162751000447315
+        },
+        {
+          "lineNumber": 5,
+          "text": "Código: TV- 125- 2026",
+          "recognitionSeconds": 0.051323952999155154
+        },
+        {
+          "lineNumber": 6,
+          "text": "Monto: Bs. 8.805, 10",
+          "recognitionSeconds": 0.059213619999354705
+        },
+        {
+          "lineNumber": 7,
+          "text": "Fecha: 1S/09/26",
+          "recognitionSeconds": 0.05358366499967815
+        }
+      ],
+      "text": "Soliaitod de Ravision\nSolicito verieicar la docmntacioń prcsontada\ny comunicar evalquier obsorvaaion pendiente.\nνιt: 4587123019\nCódigo: TV- 125- 2026\nMonto: Bs. 8.805, 10\nFecha: 1S/09/26"
+    }
+  ]
+}
