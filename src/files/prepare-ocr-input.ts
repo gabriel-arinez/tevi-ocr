@@ -15,6 +15,8 @@ import type {
   DocumentInput,
 } from '../core/document-input.js';
 
+import sharp from 'sharp';
+
 import {
   preprocessForOcr,
 } from '../preprocessing/pipeline.js';
@@ -25,7 +27,8 @@ const execFileAsync =
 export type DocumentPreparationErrorCode =
   | 'INVALID_IMAGE'
   | 'INVALID_PDF'
-  | 'PDF_PAGE_LIMIT_EXCEEDED';
+  | 'PDF_PAGE_LIMIT_EXCEEDED'
+  | 'IMAGE_PIXEL_LIMIT_EXCEEDED';
 
 export class DocumentPreparationError
   extends Error {
@@ -56,6 +59,39 @@ async function preparePage(
   buffer: Buffer,
   pageNumber: number,
 ): Promise<PreparedOcrPage> {
+  const metadata =
+    await sharp(buffer)
+      .metadata();
+
+  const width =
+    metadata.width ?? 0;
+
+  const height =
+    metadata.height ?? 0;
+
+  const pixels =
+    width * height;
+
+  if (
+    width <= 0 ||
+    height <= 0
+  ) {
+    throw new DocumentPreparationError(
+      'INVALID_IMAGE',
+      'La imagen no tiene dimensiones válidas.',
+    );
+  }
+
+  if (
+    pixels >
+    config.ocr.maxImagePixels
+  ) {
+    throw new DocumentPreparationError(
+      'IMAGE_PIXEL_LIMIT_EXCEEDED',
+      `La imagen contiene ${pixels} píxeles; el máximo permitido es ${config.ocr.maxImagePixels}.`,
+    );
+  }
+
   const preprocessed =
     await preprocessForOcr(
       buffer,
@@ -87,7 +123,14 @@ async function prepareImage(
         ),
       ],
     };
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof
+      DocumentPreparationError
+    ) {
+      throw error;
+    }
+
     throw new DocumentPreparationError(
       'INVALID_IMAGE',
       'La imagen está dañada o no puede ser decodificada.',

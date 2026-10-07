@@ -991,3 +991,168 @@ test(
     );
   },
 );
+
+test(
+  'rechaza archivo vacío',
+  async () => {
+    await withServer(
+      async (baseUrl) => {
+        const form =
+          new FormData();
+
+        form.append(
+          'file',
+          new Blob(
+            [
+              Buffer.alloc(0),
+            ],
+            {
+              type:
+                'image/png',
+            },
+          ),
+          'vacio.png',
+        );
+
+        const response =
+          await fetch(
+            `${baseUrl}/api/ocr/file`,
+            {
+              method: 'POST',
+              body: form,
+            },
+          );
+
+        assert.equal(
+          response.status,
+          400,
+        );
+
+        const payload =
+          await response.json() as {
+            error: string;
+          };
+
+        assert.equal(
+          payload.error,
+          'INVALID_DOCUMENT',
+        );
+      },
+    );
+  },
+);
+
+test(
+  'rechaza tipo MIME no soportado',
+  async () => {
+    await withServer(
+      async (baseUrl) => {
+        const form =
+          new FormData();
+
+        form.append(
+          'file',
+          new Blob(
+            [
+              Buffer.from(
+                'documento de texto',
+              ),
+            ],
+            {
+              type:
+                'text/plain',
+            },
+          ),
+          'documento.txt',
+        );
+
+        const response =
+          await fetch(
+            `${baseUrl}/api/ocr/file`,
+            {
+              method: 'POST',
+              body: form,
+            },
+          );
+
+        assert.equal(
+          response.status,
+          400,
+        );
+
+        const payload =
+          await response.json() as {
+            error: string;
+          };
+
+        assert.equal(
+          payload.error,
+          'INVALID_DOCUMENT',
+        );
+      },
+    );
+  },
+);
+
+test(
+  'rechaza JPEG con firma válida pero contenido corrupto',
+  async () => {
+    await withServer(
+      async (baseUrl) => {
+        const corruptJpeg =
+          Buffer.concat([
+            Buffer.from([
+              0xff,
+              0xd8,
+              0xff,
+              0xe0,
+            ]),
+            Buffer.from(
+              'contenido corrupto',
+            ),
+          ]);
+
+        const form =
+          new FormData();
+
+        form.append(
+          'file',
+          new Blob(
+            [
+              corruptJpeg,
+            ],
+            {
+              type:
+                'image/jpeg',
+            },
+          ),
+          'corrupto.jpg',
+        );
+
+        const response =
+          await fetch(
+            `${baseUrl}/api/ocr/file`,
+            {
+              method: 'POST',
+              body: form,
+            },
+          );
+
+        assert.equal(
+          response.status,
+          400,
+        );
+
+        const payload =
+          await response.json() as {
+            error: string;
+          };
+
+        assert.equal(
+          payload.error,
+          'INVALID_IMAGE',
+        );
+      },
+    );
+  },
+);

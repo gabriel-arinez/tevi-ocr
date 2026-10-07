@@ -14,5 +14,6 @@ export const config = Object.freeze({
     language: 'spa',
     pdfDpi: 200,
     maxPdfPages: 3,
+    maxImagePixels: 40_000_000,
   },
 });
