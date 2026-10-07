@@ -195,6 +195,17 @@ test(
               text: string;
               confidence:
                 number | null;
+              quality: {
+                status: string;
+                requiresReview: boolean;
+                reasons: string[];
+              };
+              pages: Array<{
+                quality: {
+                  status: string;
+                  requiresReview: boolean;
+                };
+              }>;
             };
           };
 
@@ -216,6 +227,27 @@ test(
         assert.match(
           payload.ocr.text,
           /SERVICIO DE IMPUESTOS NACIONALES/,
+        );
+
+        assert.equal(
+          payload.ocr.quality.status,
+          'ACCEPTABLE',
+        );
+
+        assert.equal(
+          payload.ocr.quality.requiresReview,
+          false,
+        );
+
+        assert.equal(
+          payload.ocr.pages[0]?.quality.status,
+          'ACCEPTABLE',
+        );
+
+        assert.equal(
+          payload.ocr.pages[0]
+            ?.quality.requiresReview,
+          false,
         );
       },
     );

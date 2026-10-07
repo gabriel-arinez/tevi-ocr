@@ -23,6 +23,11 @@ import {
   TesseractOcrEngine,
 } from './ocr/tesseract-engine.js';
 
+import {
+  aggregateOcrQuality,
+  assessOcrQuality,
+} from './ocr/ocr-quality.js';
+
 const app = express();
 
 app.disable('x-powered-by');
@@ -117,6 +122,14 @@ app.post(
           confidence:
             result.confidence,
 
+          quality:
+            assessOcrQuality({
+              text:
+                result.text,
+              confidence:
+                result.confidence,
+            }),
+
           durationMs:
             result.durationMs,
 
@@ -154,6 +167,14 @@ app.post(
               0,
             ) /
             confidences.length;
+
+      const quality =
+        aggregateOcrQuality(
+          pageResults.map(
+            (page) =>
+              page.quality,
+          ),
+        );
 
       const durationMs =
         pageResults.reduce(
@@ -210,6 +231,7 @@ app.post(
               .join('\n\n'),
 
           confidence,
+          quality,
           durationMs,
           preprocessingDurationMs,
           pages:
