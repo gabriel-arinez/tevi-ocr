@@ -90,3 +90,13 @@ Se medirán por separado:
 
 Los resultados de manuscritos no se mezclarán inicialmente con los
 resultados de impresos.
+
+## Resultado de F7
+
+El corpus fue evaluado completamente durante F7.
+
+La ruta manuscrita final permanece como capacidad **experimental y no apta
+para producción**.
+
+El cierre metodológico, las métricas y el benchmark reproducible están
+documentados en `docs/HANDWRITING-F7.md`.

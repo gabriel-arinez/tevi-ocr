@@ -1,0 +1,12 @@
+# F7 TrOCR runtime — validated direct versions
+# This file records the packages whose versions were explicitly validated
+# during F7. It is not a complete transitive lockfile.
+
+torch==2.14.1+cpu
+transformers==4.57.6
+huggingface-hub==0.36.2
+numpy==2.4.6
+opencv-python-headless==5.0.0.93
+Pillow==12.3.0
+safetensors==0.8.0
+tokenizers==0.22.2

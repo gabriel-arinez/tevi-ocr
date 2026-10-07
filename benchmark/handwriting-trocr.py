@@ -1,3 +1,15 @@
+"""EXPERIMENTAL / EXPLORATORY BENCHMARK.
+
+This historical benchmark uses the number of expected ground-truth lines to
+select a segmentation candidate.
+
+Its metrics MUST NOT be interpreted as an unbiased end-to-end handwriting
+benchmark.
+
+Use scripts/run-handwriting-final.sh for the final ground-truth-independent
+benchmark.
+"""
+
 import json
 import os
 import time
