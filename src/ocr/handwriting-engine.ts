@@ -13,36 +13,84 @@ import {
   config,
 } from '../core/config.js';
 
+import {
+  handwritingKrakenClient,
+  KrakenRuntimeClientError,
+  type KrakenRuntimeLine,
+} from './handwriting-kraken-client.js';
+
+import {
+  assessHandwritingConfidence,
+  type HandwritingConfidenceDecision,
+} from './handwriting-confidence-policy.js';
+
+import {
+  type HandwritingCharacterResult,
+} from './handwriting-character-contract.js';
+
+import {
+  extractStructuredFields,
+  type OcrStructuredExtractionResult,
+} from './structured-field-extractor.js';
+
 
 const execFileAsync =
   promisify(execFile);
 
 
-export interface HandwritingLineResult {
-  lineNumber: number;
-  text: string;
+export interface HandwritingLineResult
+  extends KrakenRuntimeLine {
+  confidenceDecisions:
+    HandwritingConfidenceDecision[];
+}
 
-  bbox: {
-    x1: number;
-    y1: number;
-    x2: number;
-    y2: number;
-  };
 
-  recognitionSeconds: number;
+export interface HandwritingQualityResult {
+  status: 'REVIEW';
+  requiresReview: true;
+
+  characterCount: number;
+  fallbackCharacterCount: number;
+  reviewCharacterCount: number;
+
+  fallbackThreshold: number;
+
+  automaticAcceptEnabled: false;
 }
 
 
 export interface HandwritingRecognitionResult {
   text: string;
   confidence: null;
+
   durationMs: number;
   detectionDurationMs: number;
   recognitionDurationMs: number;
   modelLoadDurationMs: number;
+
   lineCount: number;
+  characterCount: number;
+
   lines: HandwritingLineResult[];
+
+  characters:
+    HandwritingCharacterResult[];
+
+  quality:
+    HandwritingQualityResult;
+
+  structuredFields:
+    OcrStructuredExtractionResult;
+
   engine: string;
+  model: string;
+
+  runtime: {
+    persistent: true;
+    threads: number;
+    interopThreads: number;
+    requestCount: number;
+  };
 }
 
 
@@ -69,17 +117,6 @@ interface DetectionOutput {
 }
 
 
-interface RecognitionOutput {
-  ok: boolean;
-  engine: string;
-  confidence: null;
-  modelLoadSeconds: number;
-  recognitionSeconds: number;
-  lineCount: number;
-  lines: HandwritingLineResult[];
-  text: string;
-}
-
 
 function detectorPython(): string {
   return (
@@ -96,18 +133,6 @@ function detectorPython(): string {
   );
 }
 
-
-function trocrPython(): string {
-  return (
-    process.env
-      .TEVI_OCR_TROCR_PYTHON ??
-    path.resolve(
-      '.venv-handwriting',
-      'bin',
-      'python',
-    )
-  );
-}
 
 
 async function requireExecutable(
@@ -173,13 +198,9 @@ export class HandwritingOcrEngine {
     const detector =
       detectorPython();
 
-    const trocr =
-      trocrPython();
-
-    await Promise.all([
-      requireExecutable(detector),
-      requireExecutable(trocr),
-    ]);
+    await requireExecutable(
+      detector,
+    );
 
     const tempDirectory =
       await fs.mkdtemp(
@@ -205,12 +226,6 @@ export class HandwritingOcrEngine {
       path.join(
         tempDirectory,
         'detection.json',
-      );
-
-    const resultPath =
-      path.join(
-        tempDirectory,
-        'result.json',
       );
 
     try {
@@ -290,71 +305,35 @@ export class HandwritingOcrEngine {
         );
       }
 
-      await execFileAsync(
-        trocr,
-        [
-          '-u',
-          'scripts/handwriting-recognize-runtime.py',
-          '--input-json',
-          detectionPath,
-          '--output-json',
-          resultPath,
-        ],
-        {
-          timeout:
-            180_000,
+      let recognition;
 
-          maxBuffer:
-            4 * 1024 * 1024,
+      try {
+        recognition =
+          await handwritingKrakenClient
+            .recognize(
+              detectionPath,
+              180_000,
+            );
+      } catch (error) {
+        if (
+          error instanceof
+            KrakenRuntimeClientError &&
+          error.code ===
+            'KRAKEN_RUNTIME_UNAVAILABLE'
+        ) {
+          throw new HandwritingOcrError(
+            'HANDWRITING_RUNTIME_UNAVAILABLE',
+            'Runtime OCR manuscrito no disponible.',
+          );
+        }
 
-          env: {
-            ...process.env,
-
-            HF_HOME:
-              process.env
-                .TEVI_OCR_HF_CACHE ??
-              path.join(
-                os.homedir(),
-                '.cache',
-                'tevi-ocr-huggingface',
-              ),
-          },
-        },
-      );
-
-      const recognition =
-        JSON.parse(
-          await fs.readFile(
-            resultPath,
-            'utf8',
-          ),
-        ) as RecognitionOutput;
+        throw new HandwritingOcrError(
+          'HANDWRITING_PROCESSING_ERROR',
+          'No fue posible procesar el documento manuscrito.',
+        );
+      }
 
       if (
-        recognition.ok !== true ||
-        typeof recognition.engine !==
-          'string' ||
-        recognition.engine.length === 0 ||
-        recognition.confidence !== null ||
-        typeof recognition.text !==
-          'string' ||
-        !Number.isFinite(
-          recognition.modelLoadSeconds,
-        ) ||
-        recognition.modelLoadSeconds < 0 ||
-        !Number.isFinite(
-          recognition.recognitionSeconds,
-        ) ||
-        recognition.recognitionSeconds < 0 ||
-        !Number.isInteger(
-          recognition.lineCount,
-        ) ||
-        recognition.lineCount < 0 ||
-        !Array.isArray(
-          recognition.lines,
-        ) ||
-        recognition.lines.length !==
-          recognition.lineCount ||
         recognition.lineCount !==
           detection.lineCount
       ) {
@@ -363,6 +342,88 @@ export class HandwritingOcrEngine {
           'El recognizer manuscrito devolvió una respuesta inválida.',
         );
       }
+
+      const lines:
+        HandwritingLineResult[] =
+          recognition.lines.map(
+            (line) => ({
+              ...line,
+
+              confidenceDecisions:
+                line.characters.map(
+                  (character) =>
+                    assessHandwritingConfidence(
+                      character.confidence,
+                    ),
+                ),
+            }),
+          );
+
+      const fallbackCharacterCount =
+        lines.reduce(
+          (total, line) =>
+            total +
+            line.confidenceDecisions
+              .filter(
+                (decision) =>
+                  decision
+                    .requiresFallback,
+              )
+              .length,
+          0,
+        );
+
+      const reviewCharacterCount =
+        lines.reduce(
+          (total, line) =>
+            total +
+            line.confidenceDecisions
+              .filter(
+                (decision) =>
+                  decision
+                    .requiresReview,
+              )
+              .length,
+          0,
+        );
+
+      /*
+       * F11.5:
+       * ACCEPT manuscrito permanece
+       * deliberadamente deshabilitado.
+       */
+      const quality:
+        HandwritingQualityResult = {
+          status: 'REVIEW',
+          requiresReview: true,
+
+          characterCount:
+            recognition
+              .characterCount,
+
+          fallbackCharacterCount,
+
+          reviewCharacterCount,
+
+          fallbackThreshold:
+            0.70,
+
+          automaticAcceptEnabled:
+            false,
+        };
+
+      const structuredFields =
+        extractStructuredFields(
+          recognition.text,
+          lines.map(
+            (line) => ({
+              lineNumber:
+                line.lineNumber,
+              text:
+                line.text,
+            }),
+          ),
+        );
 
       const finishedAt =
         process.hrtime.bigint();
@@ -396,11 +457,26 @@ export class HandwritingOcrEngine {
         lineCount:
           recognition.lineCount,
 
-        lines:
-          recognition.lines,
+        characterCount:
+          recognition.characterCount,
+
+        lines,
+
+        characters:
+          recognition.characters,
+
+        quality,
+
+        structuredFields,
 
         engine:
           recognition.engine,
+
+        model:
+          recognition.model,
+
+        runtime:
+          recognition.runtime,
       };
     } catch (error) {
       if (

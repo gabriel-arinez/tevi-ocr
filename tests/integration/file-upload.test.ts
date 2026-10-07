@@ -6,6 +6,465 @@ import {
   app,
 } from '../../src/server.js';
 
+import {
+  handwritingKrakenClient,
+} from '../../src/ocr/handwriting-kraken-client.js';
+
+async function makeFakeHandwritingRuntimes(
+  krakenMode:
+    | 'valid'
+    | 'failure',
+): Promise<{
+  directory: string;
+  detectorPython: string;
+  krakenPython: string;
+  krakenRuntime: string;
+}> {
+  const directory =
+    await fs.mkdtemp(
+      '/tmp/tevi-ocr-handwriting-integration-',
+    );
+
+  const detectorPython =
+    `${directory}/fake-detector.sh`;
+
+  const detectorScript =
+    `${directory}/fake-detector.mjs`;
+
+  const krakenPython =
+    `${directory}/fake-kraken-python.sh`;
+
+  const krakenRuntime =
+    `${directory}/fake-kraken-runtime.mjs`;
+
+  await fs.writeFile(
+    detectorScript,
+    `
+import fs from 'node:fs';
+
+const args =
+  process.argv.slice(2);
+
+const valueAfter = (name) => {
+  const index =
+    args.indexOf(name);
+
+  return index >= 0
+    ? args[index + 1]
+    : undefined;
+};
+
+const outputDir =
+  valueAfter('--output-dir');
+
+const jsonPath =
+  valueAfter('--json');
+
+if (!outputDir || !jsonPath) {
+  process.exitCode = 2;
+} else {
+  fs.mkdirSync(
+    outputDir,
+    {
+      recursive: true,
+    },
+  );
+
+  const linePath =
+    outputDir + '/line-001.png';
+
+  fs.writeFileSync(
+    linePath,
+    Buffer.from([]),
+  );
+
+  fs.writeFileSync(
+    jsonPath,
+    JSON.stringify({
+      ok: true,
+      detectionSeconds: 0.01,
+      lineCount: 1,
+      lines: [
+        {
+          lineNumber: 1,
+          path: linePath,
+          bbox: {
+            x1: 10,
+            y1: 20,
+            x2: 100,
+            y2: 50,
+          },
+        },
+      ],
+    }),
+  );
+}
+`,
+    'utf8',
+  );
+
+  await fs.writeFile(
+    detectorPython,
+    `#!/usr/bin/env bash
+shift
+exec "${process.execPath}" "${detectorScript}" "$@"
+`,
+    {
+      encoding: 'utf8',
+      mode: 0o755,
+    },
+  );
+
+  await fs.writeFile(
+    krakenRuntime,
+    `
+import readline from 'node:readline';
+
+const mode =
+  process.env
+    .TEVI_OCR_FAKE_KRAKEN_INTEGRATION_MODE
+  ?? 'valid';
+
+let requestCount = 0;
+
+const emit = (payload) => {
+  process.stdout.write(
+    JSON.stringify(payload) + '\\n'
+  );
+};
+
+emit({
+  type: 'ready',
+  ok: true,
+  engine:
+    'Kraken 7.1.1 / PP-OCRv6 small',
+  model:
+    '10.5281/zenodo.21788405',
+  modelLoadSeconds: 0.02,
+  threads: 4,
+  interopThreads: 2,
+});
+
+const reader =
+  readline.createInterface({
+    input: process.stdin,
+    crlfDelay: Infinity,
+  });
+
+reader.on(
+  'line',
+  (raw) => {
+    const request =
+      JSON.parse(raw);
+
+    requestCount += 1;
+
+    if (mode === 'failure') {
+      emit({
+        type: 'result',
+        id: request.id,
+        ok: false,
+        error:
+          'RECOGNITION_FAILED',
+      });
+
+      return;
+    }
+
+    const makeCharacter = (
+      characterIndex,
+      char,
+      confidence,
+      x1,
+      x2,
+    ) => ({
+      lineNumber: 1,
+      characterIndex,
+      char,
+      cut: [
+        { x: x1, y: 1 },
+        { x: x2, y: 1 },
+        { x: x2, y: 10 },
+        { x: x1, y: 10 },
+      ],
+      bbox: {
+        x1,
+        y1: 1,
+        x2,
+        y2: 10,
+      },
+      confidence,
+    });
+
+    const characters = [
+      makeCharacter(
+        0,
+        'N',
+        0.95,
+        1,
+        5,
+      ),
+      makeCharacter(
+        1,
+        'I',
+        0.92,
+        6,
+        10,
+      ),
+      makeCharacter(
+        2,
+        'T',
+        0.91,
+        11,
+        15,
+      ),
+      makeCharacter(
+        3,
+        ':',
+        0.88,
+        16,
+        18,
+      ),
+      makeCharacter(
+        4,
+        ' ',
+        0.80,
+        19,
+        21,
+      ),
+      makeCharacter(
+        5,
+        '1',
+        0.65,
+        22,
+        26,
+      ),
+      makeCharacter(
+        6,
+        '2',
+        0.93,
+        27,
+        31,
+      ),
+      makeCharacter(
+        7,
+        '3',
+        0.94,
+        32,
+        36,
+      ),
+    ];
+
+    const text =
+      characters
+        .map(
+          (item) => item.char,
+        )
+        .join('');
+
+    emit({
+      type: 'result',
+      id: request.id,
+      ok: true,
+
+      engine:
+        'Kraken 7.1.1 / PP-OCRv6 small',
+
+      model:
+        '10.5281/zenodo.21788405',
+
+      modelLoadSeconds:
+        0.02,
+
+      recognitionSeconds:
+        0.03,
+
+      lineCount:
+        1,
+
+      characterCount:
+        characters.length,
+
+      text,
+
+      lines: [
+        {
+          lineNumber:
+            1,
+
+          text,
+
+          prediction:
+            text,
+
+          bbox: {
+            x1: 10,
+            y1: 20,
+            x2: 100,
+            y2: 50,
+          },
+
+          recognitionSeconds:
+            0.03,
+
+          characters,
+        },
+      ],
+
+      characters,
+
+      runtime: {
+        persistent:
+          true,
+
+        threads:
+          4,
+
+        interopThreads:
+          2,
+
+        requestCount,
+      },
+    });
+  },
+);
+`,
+    'utf8',
+  );
+
+  await fs.writeFile(
+    krakenPython,
+    `#!/usr/bin/env bash
+shift
+shift
+exec "${process.execPath}" "${krakenRuntime}"
+`,
+    {
+      encoding: 'utf8',
+      mode: 0o755,
+    },
+  );
+
+  process.env
+    .TEVI_OCR_FAKE_KRAKEN_INTEGRATION_MODE =
+    krakenMode;
+
+  return {
+    directory,
+    detectorPython,
+    krakenPython,
+    krakenRuntime,
+  };
+}
+
+
+async function withFakeHandwritingRuntime(
+  krakenMode:
+    | 'valid'
+    | 'failure',
+  callback: () => Promise<void>,
+): Promise<void> {
+  const previousDetector =
+    process.env
+      .TEVI_OCR_DETECTOR_PYTHON;
+
+  const previousKrakenPython =
+    process.env
+      .TEVI_OCR_KRAKEN_PYTHON;
+
+  const previousKrakenRuntime =
+    process.env
+      .TEVI_OCR_KRAKEN_RUNTIME;
+
+  const previousMode =
+    process.env
+      .TEVI_OCR_FAKE_KRAKEN_INTEGRATION_MODE;
+
+  const fake =
+    await makeFakeHandwritingRuntimes(
+      krakenMode,
+    );
+
+  await handwritingKrakenClient
+    .close();
+
+  process.env
+    .TEVI_OCR_DETECTOR_PYTHON =
+    fake.detectorPython;
+
+  process.env
+    .TEVI_OCR_KRAKEN_PYTHON =
+    fake.krakenPython;
+
+  process.env
+    .TEVI_OCR_KRAKEN_RUNTIME =
+    fake.krakenRuntime;
+
+  try {
+    await callback();
+  } finally {
+    await handwritingKrakenClient
+      .close();
+
+    if (
+      previousDetector ===
+      undefined
+    ) {
+      delete process.env
+        .TEVI_OCR_DETECTOR_PYTHON;
+    } else {
+      process.env
+        .TEVI_OCR_DETECTOR_PYTHON =
+        previousDetector;
+    }
+
+    if (
+      previousKrakenPython ===
+      undefined
+    ) {
+      delete process.env
+        .TEVI_OCR_KRAKEN_PYTHON;
+    } else {
+      process.env
+        .TEVI_OCR_KRAKEN_PYTHON =
+        previousKrakenPython;
+    }
+
+    if (
+      previousKrakenRuntime ===
+      undefined
+    ) {
+      delete process.env
+        .TEVI_OCR_KRAKEN_RUNTIME;
+    } else {
+      process.env
+        .TEVI_OCR_KRAKEN_RUNTIME =
+        previousKrakenRuntime;
+    }
+
+    if (
+      previousMode ===
+      undefined
+    ) {
+      delete process.env
+        .TEVI_OCR_FAKE_KRAKEN_INTEGRATION_MODE;
+    } else {
+      process.env
+        .TEVI_OCR_FAKE_KRAKEN_INTEGRATION_MODE =
+        previousMode;
+    }
+
+    await fs.rm(
+      fake.directory,
+      {
+        recursive: true,
+        force: true,
+      },
+    );
+  }
+}
+
+
 async function withServer(
   callback: (
     baseUrl: string,
@@ -1310,19 +1769,358 @@ test(
 
 
 test(
-  'runtime manuscrito ausente responde 503 sin filtrar rutas locales',
+  'modo manuscrito expone contrato Kraken v2 completo',
+  async () => {
+    await withFakeHandwritingRuntime(
+      'valid',
+      async () => {
+        await withServer(
+          async (baseUrl) => {
+            const png =
+              await fs.readFile(
+                'tests/fixtures/printed/printed-clean.png',
+              );
+
+            const form =
+              new FormData();
+
+            form.append(
+              'file',
+              new Blob(
+                [png],
+                {
+                  type:
+                    'image/png',
+                },
+              ),
+              'printed-clean.png',
+            );
+
+            form.append(
+              'mode',
+              'handwritten',
+            );
+
+            const response =
+              await fetch(
+                `${baseUrl}/api/ocr/file`,
+                {
+                  method:
+                    'POST',
+                  body:
+                    form,
+                },
+              );
+
+            assert.equal(
+              response.status,
+              200,
+            );
+
+            const payload =
+              await response.json() as {
+                ok: boolean;
+
+                ocr: {
+                  mode: string;
+                  experimental:
+                    boolean;
+                  engine: string;
+                  model: string;
+                  text: string;
+                  confidence: null;
+
+                  quality: {
+                    status: string;
+                    requiresReview:
+                      boolean;
+                    characterCount:
+                      number;
+                    fallbackCharacterCount:
+                      number;
+                    reviewCharacterCount:
+                      number;
+                    fallbackThreshold:
+                      number;
+                    automaticAcceptEnabled:
+                      boolean;
+                  };
+
+                  characterCount:
+                    number;
+
+                  characters:
+                    Array<{
+                      char: string;
+                      confidence:
+                        number;
+                    }>;
+
+                  structuredFields: {
+                    rawText: string;
+                    fields:
+                      Array<{
+                        fieldType:
+                          string;
+                        raw:
+                          string;
+                        resolved:
+                          string | null;
+                        status:
+                          string;
+                      }>;
+                  };
+
+                  runtime: {
+                    persistent:
+                      boolean;
+                    threads:
+                      number;
+                    interopThreads:
+                      number;
+                    requestCount:
+                      number;
+                  };
+
+                  pages:
+                    Array<{
+                      lineCount:
+                        number;
+                      characterCount:
+                        number;
+                      lines:
+                        unknown[];
+                      characters:
+                        unknown[];
+                      structuredFields: {
+                        rawText:
+                          string;
+                      };
+                    }>;
+                };
+              };
+
+            assert.equal(
+              payload.ok,
+              true,
+            );
+
+            assert.equal(
+              payload.ocr.mode,
+              'handwritten',
+            );
+
+            assert.equal(
+              payload.ocr.experimental,
+              true,
+            );
+
+            assert.match(
+              payload.ocr.engine,
+              /Kraken/,
+            );
+
+            assert.equal(
+              payload.ocr.model,
+              '10.5281/zenodo.21788405',
+            );
+
+            assert.equal(
+              payload.ocr.text,
+              'NIT: 123',
+            );
+
+            assert.equal(
+              payload.ocr.confidence,
+              null,
+            );
+
+            assert.equal(
+              payload.ocr
+                .quality.status,
+              'REVIEW',
+            );
+
+            assert.equal(
+              payload.ocr
+                .quality.requiresReview,
+              true,
+            );
+
+            assert.equal(
+              payload.ocr
+                .quality.characterCount,
+              8,
+            );
+
+            assert.equal(
+              payload.ocr
+                .quality.fallbackCharacterCount,
+              1,
+            );
+
+            assert.equal(
+              payload.ocr
+                .quality.reviewCharacterCount,
+              8,
+            );
+
+            assert.equal(
+              payload.ocr
+                .quality.fallbackThreshold,
+              0.70,
+            );
+
+            assert.equal(
+              payload.ocr
+                .quality.automaticAcceptEnabled,
+              false,
+            );
+
+            assert.equal(
+              payload.ocr.characterCount,
+              8,
+            );
+
+            assert.equal(
+              payload.ocr.characters.length,
+              8,
+            );
+
+            assert.equal(
+              payload.ocr
+                .characters[5]
+                ?.confidence,
+              0.65,
+            );
+
+            assert.equal(
+              payload.ocr
+                .structuredFields
+                .rawText,
+              payload.ocr.text,
+            );
+
+            assert.equal(
+              payload.ocr
+                .structuredFields
+                .fields.length,
+              1,
+            );
+
+            assert.equal(
+              payload.ocr
+                .structuredFields
+                .fields[0]
+                ?.fieldType,
+              'NIT',
+            );
+
+            assert.equal(
+              payload.ocr
+                .structuredFields
+                .fields[0]
+                ?.raw,
+              '123',
+            );
+
+            assert.equal(
+              payload.ocr
+                .structuredFields
+                .fields[0]
+                ?.resolved,
+              '123',
+            );
+
+            assert.equal(
+              payload.ocr
+                .runtime.persistent,
+              true,
+            );
+
+            assert.equal(
+              payload.ocr
+                .runtime.threads,
+              4,
+            );
+
+            assert.equal(
+              payload.ocr
+                .runtime.interopThreads,
+              2,
+            );
+
+            assert.equal(
+              payload.ocr
+                .runtime.requestCount,
+              1,
+            );
+
+            assert.equal(
+              payload.ocr.pages.length,
+              1,
+            );
+
+            assert.equal(
+              payload.ocr.pages[0]
+                ?.lineCount,
+              1,
+            );
+
+            assert.equal(
+              payload.ocr.pages[0]
+                ?.characterCount,
+              8,
+            );
+
+            assert.equal(
+              payload.ocr.pages[0]
+                ?.structuredFields
+                .rawText,
+              payload.ocr.text,
+            );
+          },
+        );
+      },
+    );
+  },
+);
+
+
+test(
+  'runtime Kraken ausente responde 503 sin filtrar rutas locales',
   async () => {
     const previousDetector =
-      process.env.TEVI_OCR_DETECTOR_PYTHON;
+      process.env
+        .TEVI_OCR_DETECTOR_PYTHON;
 
-    const previousTrocr =
-      process.env.TEVI_OCR_TROCR_PYTHON;
+    const previousKraken =
+      process.env
+        .TEVI_OCR_KRAKEN_PYTHON;
 
-    process.env.TEVI_OCR_DETECTOR_PYTHON =
-      '/tmp/tevi-ocr-no-existe-detector';
+    const previousRuntime =
+      process.env
+        .TEVI_OCR_KRAKEN_RUNTIME;
 
-    process.env.TEVI_OCR_TROCR_PYTHON =
-      '/tmp/tevi-ocr-no-existe-trocr';
+    const fake =
+      await makeFakeHandwritingRuntimes(
+        'valid',
+      );
+
+    await handwritingKrakenClient
+      .close();
+
+    process.env
+      .TEVI_OCR_DETECTOR_PYTHON =
+      fake.detectorPython;
+
+    process.env
+      .TEVI_OCR_KRAKEN_PYTHON =
+      '/tmp/tevi-ocr-no-existe-kraken';
+
+    process.env
+      .TEVI_OCR_KRAKEN_RUNTIME =
+      fake.krakenRuntime;
 
     try {
       await withServer(
@@ -1356,8 +2154,10 @@ test(
             await fetch(
               `${baseUrl}/api/ocr/file`,
               {
-                method: 'POST',
-                body: form,
+                method:
+                  'POST',
+                body:
+                  form,
               },
             );
 
@@ -1389,6 +2189,9 @@ test(
         },
       );
     } finally {
+      await handwritingKrakenClient
+        .close();
+
       if (
         previousDetector ===
         undefined
@@ -1402,113 +2205,111 @@ test(
       }
 
       if (
-        previousTrocr ===
+        previousKraken ===
         undefined
       ) {
         delete process.env
-          .TEVI_OCR_TROCR_PYTHON;
+          .TEVI_OCR_KRAKEN_PYTHON;
       } else {
         process.env
-          .TEVI_OCR_TROCR_PYTHON =
-          previousTrocr;
+          .TEVI_OCR_KRAKEN_PYTHON =
+          previousKraken;
       }
+
+      if (
+        previousRuntime ===
+        undefined
+      ) {
+        delete process.env
+          .TEVI_OCR_KRAKEN_RUNTIME;
+      } else {
+        process.env
+          .TEVI_OCR_KRAKEN_RUNTIME =
+          previousRuntime;
+      }
+
+      delete process.env
+        .TEVI_OCR_FAKE_KRAKEN_INTEGRATION_MODE;
+
+      await fs.rm(
+        fake.directory,
+        {
+          recursive: true,
+          force: true,
+        },
+      );
     }
   },
 );
 
 
 test(
-  'fallo interno del runtime manuscrito responde 500',
+  'fallo interno de Kraken responde 500',
   async () => {
-    const previousDetector =
-      process.env.TEVI_OCR_DETECTOR_PYTHON;
+    await withFakeHandwritingRuntime(
+      'failure',
+      async () => {
+        await withServer(
+          async (baseUrl) => {
+            const png =
+              await fs.readFile(
+                'tests/fixtures/printed/printed-clean.png',
+              );
 
-    const previousTrocr =
-      process.env.TEVI_OCR_TROCR_PYTHON;
+            const form =
+              new FormData();
 
-    process.env.TEVI_OCR_DETECTOR_PYTHON =
-      '/bin/false';
-
-    process.env.TEVI_OCR_TROCR_PYTHON =
-      '/bin/true';
-
-    try {
-      await withServer(
-        async (baseUrl) => {
-          const png =
-            await fs.readFile(
-              'tests/fixtures/printed/printed-clean.png',
+            form.append(
+              'file',
+              new Blob(
+                [png],
+                {
+                  type:
+                    'image/png',
+                },
+              ),
+              'printed-clean.png',
             );
 
-          const form =
-            new FormData();
-
-          form.append(
-            'file',
-            new Blob(
-              [png],
-              {
-                type:
-                  'image/png',
-              },
-            ),
-            'printed-clean.png',
-          );
-
-          form.append(
-            'mode',
-            'handwritten',
-          );
-
-          const response =
-            await fetch(
-              `${baseUrl}/api/ocr/file`,
-              {
-                method: 'POST',
-                body: form,
-              },
+            form.append(
+              'mode',
+              'handwritten',
             );
 
-          assert.equal(
-            response.status,
-            500,
-          );
+            const response =
+              await fetch(
+                `${baseUrl}/api/ocr/file`,
+                {
+                  method:
+                    'POST',
+                  body:
+                    form,
+                },
+              );
 
-          const payload =
-            await response.json() as {
-              error: string;
-            };
+            assert.equal(
+              response.status,
+              500,
+            );
 
-          assert.equal(
-            payload.error,
-            'HANDWRITING_PROCESSING_ERROR',
-          );
-        },
-      );
-    } finally {
-      if (
-        previousDetector ===
-        undefined
-      ) {
-        delete process.env
-          .TEVI_OCR_DETECTOR_PYTHON;
-      } else {
-        process.env
-          .TEVI_OCR_DETECTOR_PYTHON =
-          previousDetector;
-      }
+            const payload =
+              await response.json() as {
+                error: string;
+                message: string;
+              };
 
-      if (
-        previousTrocr ===
-        undefined
-      ) {
-        delete process.env
-          .TEVI_OCR_TROCR_PYTHON;
-      } else {
-        process.env
-          .TEVI_OCR_TROCR_PYTHON =
-          previousTrocr;
-      }
-    }
+            assert.equal(
+              payload.error,
+              'HANDWRITING_PROCESSING_ERROR',
+            );
+
+            assert.doesNotMatch(
+              payload.message,
+              /\/tmp\/|\/home\//,
+            );
+          },
+        );
+      },
+    );
   },
 );

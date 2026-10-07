@@ -130,12 +130,7 @@ app.post(
           );
 
         const quality =
-          assessOcrQuality({
-            text:
-              result.text,
-            confidence:
-              result.confidence,
-          });
+          result.quality;
 
         response.json({
           ok: true,
@@ -166,6 +161,9 @@ app.post(
             engine:
               result.engine,
 
+            model:
+              result.model,
+
             experimental:
               true,
 
@@ -176,6 +174,18 @@ app.post(
               null,
 
             quality,
+
+            characterCount:
+              result.characterCount,
+
+            characters:
+              result.characters,
+
+            structuredFields:
+              result.structuredFields,
+
+            runtime:
+              result.runtime,
 
             durationMs:
               result.durationMs,
@@ -207,8 +217,17 @@ app.post(
                 lineCount:
                   result.lineCount,
 
+                characterCount:
+                  result.characterCount,
+
                 lines:
                   result.lines,
+
+                characters:
+                  result.characters,
+
+                structuredFields:
+                  result.structuredFields,
               },
             ],
           },
