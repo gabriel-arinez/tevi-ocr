@@ -33,6 +33,26 @@
     <section class="card">
       <h2>Entrada</h2>
 
+      <div>
+        <label for="ocrMode">
+          Tipo de documento
+        </label>
+
+        <select id="ocrMode">
+          <option value="printed">
+            Texto impreso
+          </option>
+
+          <option value="handwritten">
+            Manuscrito
+          </option>
+        </select>
+
+        <p id="modeHelp">
+          Usa Texto impreso para documentos mecanografiados o impresos.
+        </p>
+      </div>
+
       <div class="actions">
         <button
           id="selectFile"

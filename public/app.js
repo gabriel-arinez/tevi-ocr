@@ -10,6 +10,16 @@ const fileInput =
     'fileInput',
   );
 
+const ocrMode =
+  document.getElementById(
+    'ocrMode',
+  );
+
+const modeHelp =
+  document.getElementById(
+    'modeHelp',
+  );
+
 const status =
   document.getElementById(
     'status',
@@ -71,6 +81,28 @@ function setStatus(
     message;
 }
 
+ocrMode.addEventListener(
+  'change',
+  () => {
+    if (
+      ocrMode.value ===
+      'handwritten'
+    ) {
+      modeHelp.textContent =
+        'Usa Manuscrito para fotografías o imágenes con escritura a mano. Esta ruta es experimental y requiere revisión.';
+    } else {
+      modeHelp.textContent =
+        'Usa Texto impreso para documentos mecanografiados o impresos.';
+    }
+
+    result.textContent = '';
+    setStatus(
+      'Listo para procesar un documento.',
+    );
+  },
+);
+
+
 function clearPreviewUrl() {
   if (previewUrl) {
     URL.revokeObjectURL(
@@ -122,8 +154,15 @@ async function submitOcr(
     source,
   );
 
+  form.append(
+    'mode',
+    ocrMode.value,
+  );
+
   setStatus(
-    'Procesando OCR...',
+    ocrMode.value === 'handwritten'
+      ? 'Procesando manuscrito con CRAFT + TrOCR...'
+      : 'Procesando texto impreso con Tesseract...',
   );
 
   result.textContent = '';
@@ -157,16 +196,47 @@ async function submitOcr(
           payload.ocr.confidence,
         ).toFixed(2);
 
+  const quality =
+    payload.ocr.quality?.status ??
+    'N/D';
+
+  const engine =
+    payload.ocr.engine ??
+    'N/D';
+
+  const mode =
+    payload.ocr.mode ===
+      'handwritten'
+      ? 'Manuscrito'
+      : 'Texto impreso';
+
+  const warning =
+    payload.ocr.experimental
+      ? 'ADVERTENCIA: reconocimiento manuscrito experimental; revise el texto obtenido.'
+      : null;
+
   result.textContent = [
     `Origen: ${payload.document.source}`,
     `Formato: ${payload.document.kind}`,
+    `Modo: ${mode}`,
+    `Motor: ${engine}`,
     `Confianza: ${confidence}`,
+    `Calidad: ${quality}`,
+    ...(warning
+      ? [
+          '',
+          warning,
+        ]
+      : []),
     '',
     payload.ocr.text,
   ].join('\n');
 
   setStatus(
-    'OCR completado correctamente.',
+    payload.ocr.quality
+      ?.requiresReview
+      ? 'OCR completado. El resultado requiere revisión.'
+      : 'OCR completado correctamente.',
   );
 }
 

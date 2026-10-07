@@ -215,6 +215,27 @@ test(
         );
 
         assert.equal(
+          (payload.ocr as {
+            mode?: string;
+          }).mode,
+          'printed',
+        );
+
+        assert.equal(
+          (payload.ocr as {
+            engine?: string;
+          }).engine,
+          'tesseract.js',
+        );
+
+        assert.equal(
+          (payload.ocr as {
+            experimental?: boolean;
+          }).experimental,
+          false,
+        );
+
+        assert.equal(
           payload.document.kind,
           'png',
         );
@@ -1154,5 +1175,340 @@ test(
         );
       },
     );
+  },
+);
+
+
+test(
+  'rechaza modo OCR desconocido',
+  async () => {
+    await withServer(
+      async (baseUrl) => {
+        const png =
+          await fs.readFile(
+            'tests/fixtures/printed/printed-clean.png',
+          );
+
+        const form =
+          new FormData();
+
+        form.append(
+          'file',
+          new Blob(
+            [png],
+            {
+              type:
+                'image/png',
+            },
+          ),
+          'printed-clean.png',
+        );
+
+        form.append(
+          'mode',
+          'handwriten',
+        );
+
+        const response =
+          await fetch(
+            `${baseUrl}/api/ocr/file`,
+            {
+              method: 'POST',
+              body: form,
+            },
+          );
+
+        assert.equal(
+          response.status,
+          400,
+        );
+
+        const payload =
+          await response.json() as {
+            ok: boolean;
+            error: string;
+          };
+
+        assert.equal(
+          payload.ok,
+          false,
+        );
+
+        assert.equal(
+          payload.error,
+          'OCR_MODE_INVALID',
+        );
+      },
+    );
+  },
+);
+
+
+test(
+  'modo manuscrito rechaza PDF antes de ejecutar recognizer',
+  async () => {
+    await withServer(
+      async (baseUrl) => {
+        const pdf =
+          await fs.readFile(
+            'tests/fixtures/printed/printed-clean.pdf',
+          );
+
+        const form =
+          new FormData();
+
+        form.append(
+          'file',
+          new Blob(
+            [pdf],
+            {
+              type:
+                'application/pdf',
+            },
+          ),
+          'printed-clean.pdf',
+        );
+
+        form.append(
+          'mode',
+          'handwritten',
+        );
+
+        const response =
+          await fetch(
+            `${baseUrl}/api/ocr/file`,
+            {
+              method: 'POST',
+              body: form,
+            },
+          );
+
+        assert.equal(
+          response.status,
+          400,
+        );
+
+        const payload =
+          await response.json() as {
+            ok: boolean;
+            error: string;
+          };
+
+        assert.equal(
+          payload.ok,
+          false,
+        );
+
+        assert.equal(
+          payload.error,
+          'INVALID_DOCUMENT',
+        );
+      },
+    );
+  },
+);
+
+
+test(
+  'runtime manuscrito ausente responde 503 sin filtrar rutas locales',
+  async () => {
+    const previousDetector =
+      process.env.TEVI_OCR_DETECTOR_PYTHON;
+
+    const previousTrocr =
+      process.env.TEVI_OCR_TROCR_PYTHON;
+
+    process.env.TEVI_OCR_DETECTOR_PYTHON =
+      '/tmp/tevi-ocr-no-existe-detector';
+
+    process.env.TEVI_OCR_TROCR_PYTHON =
+      '/tmp/tevi-ocr-no-existe-trocr';
+
+    try {
+      await withServer(
+        async (baseUrl) => {
+          const png =
+            await fs.readFile(
+              'tests/fixtures/printed/printed-clean.png',
+            );
+
+          const form =
+            new FormData();
+
+          form.append(
+            'file',
+            new Blob(
+              [png],
+              {
+                type:
+                  'image/png',
+              },
+            ),
+            'printed-clean.png',
+          );
+
+          form.append(
+            'mode',
+            'handwritten',
+          );
+
+          const response =
+            await fetch(
+              `${baseUrl}/api/ocr/file`,
+              {
+                method: 'POST',
+                body: form,
+              },
+            );
+
+          assert.equal(
+            response.status,
+            503,
+          );
+
+          const payload =
+            await response.json() as {
+              error: string;
+              message: string;
+            };
+
+          assert.equal(
+            payload.error,
+            'HANDWRITING_RUNTIME_UNAVAILABLE',
+          );
+
+          assert.equal(
+            payload.message,
+            'Runtime OCR manuscrito no disponible.',
+          );
+
+          assert.doesNotMatch(
+            payload.message,
+            /\/tmp\/|\/home\//,
+          );
+        },
+      );
+    } finally {
+      if (
+        previousDetector ===
+        undefined
+      ) {
+        delete process.env
+          .TEVI_OCR_DETECTOR_PYTHON;
+      } else {
+        process.env
+          .TEVI_OCR_DETECTOR_PYTHON =
+          previousDetector;
+      }
+
+      if (
+        previousTrocr ===
+        undefined
+      ) {
+        delete process.env
+          .TEVI_OCR_TROCR_PYTHON;
+      } else {
+        process.env
+          .TEVI_OCR_TROCR_PYTHON =
+          previousTrocr;
+      }
+    }
+  },
+);
+
+
+test(
+  'fallo interno del runtime manuscrito responde 500',
+  async () => {
+    const previousDetector =
+      process.env.TEVI_OCR_DETECTOR_PYTHON;
+
+    const previousTrocr =
+      process.env.TEVI_OCR_TROCR_PYTHON;
+
+    process.env.TEVI_OCR_DETECTOR_PYTHON =
+      '/bin/false';
+
+    process.env.TEVI_OCR_TROCR_PYTHON =
+      '/bin/true';
+
+    try {
+      await withServer(
+        async (baseUrl) => {
+          const png =
+            await fs.readFile(
+              'tests/fixtures/printed/printed-clean.png',
+            );
+
+          const form =
+            new FormData();
+
+          form.append(
+            'file',
+            new Blob(
+              [png],
+              {
+                type:
+                  'image/png',
+              },
+            ),
+            'printed-clean.png',
+          );
+
+          form.append(
+            'mode',
+            'handwritten',
+          );
+
+          const response =
+            await fetch(
+              `${baseUrl}/api/ocr/file`,
+              {
+                method: 'POST',
+                body: form,
+              },
+            );
+
+          assert.equal(
+            response.status,
+            500,
+          );
+
+          const payload =
+            await response.json() as {
+              error: string;
+            };
+
+          assert.equal(
+            payload.error,
+            'HANDWRITING_PROCESSING_ERROR',
+          );
+        },
+      );
+    } finally {
+      if (
+        previousDetector ===
+        undefined
+      ) {
+        delete process.env
+          .TEVI_OCR_DETECTOR_PYTHON;
+      } else {
+        process.env
+          .TEVI_OCR_DETECTOR_PYTHON =
+          previousDetector;
+      }
+
+      if (
+        previousTrocr ===
+        undefined
+      ) {
+        delete process.env
+          .TEVI_OCR_TROCR_PYTHON;
+      } else {
+        process.env
+          .TEVI_OCR_TROCR_PYTHON =
+          previousTrocr;
+      }
+    }
   },
 );

@@ -24,9 +24,19 @@ import {
 } from './ocr/tesseract-engine.js';
 
 import {
+  HandwritingOcrEngine,
+  HandwritingOcrError,
+} from './ocr/handwriting-engine.js';
+
+import {
   aggregateOcrQuality,
   assessOcrQuality,
 } from './ocr/ocr-quality.js';
+
+import {
+  InvalidOcrModeError,
+  resolveOcrMode,
+} from './ocr/ocr-mode.js';
 
 const app = express();
 
@@ -93,6 +103,119 @@ app.post(
             request.body?.source,
           ),
         );
+
+      const mode =
+        resolveOcrMode(
+          request.body?.mode,
+        );
+
+      if (
+        mode === 'handwritten'
+      ) {
+        if (
+          documentInput.kind ===
+          'pdf'
+        ) {
+          throw new InvalidDocumentError(
+            'El modo manuscrito admite únicamente imágenes JPEG o PNG.',
+          );
+        }
+
+        const engine =
+          new HandwritingOcrEngine();
+
+        const result =
+          await engine.recognize(
+            documentInput.buffer,
+          );
+
+        const quality =
+          assessOcrQuality({
+            text:
+              result.text,
+            confidence:
+              result.confidence,
+          });
+
+        response.json({
+          ok: true,
+
+          document: {
+            source:
+              documentInput.source,
+
+            kind:
+              documentInput.kind,
+
+            mimeType:
+              documentInput.mimeType,
+
+            originalName:
+              documentInput.originalName,
+
+            sizeBytes:
+              documentInput.buffer.length,
+
+            pages: 1,
+          },
+
+          ocr: {
+            mode:
+              'handwritten',
+
+            engine:
+              result.engine,
+
+            experimental:
+              true,
+
+            text:
+              result.text,
+
+            confidence:
+              null,
+
+            quality,
+
+            durationMs:
+              result.durationMs,
+
+            detectionDurationMs:
+              result.detectionDurationMs,
+
+            recognitionDurationMs:
+              result.recognitionDurationMs,
+
+            modelLoadDurationMs:
+              result.modelLoadDurationMs,
+
+            pages: [
+              {
+                pageNumber: 1,
+
+                text:
+                  result.text,
+
+                confidence:
+                  null,
+
+                quality,
+
+                durationMs:
+                  result.durationMs,
+
+                lineCount:
+                  result.lineCount,
+
+                lines:
+                  result.lines,
+              },
+            ],
+          },
+        });
+
+        return;
+      }
 
       const prepared =
         await prepareOcrInput(
@@ -222,6 +345,15 @@ app.post(
         },
 
         ocr: {
+          mode:
+            'printed',
+
+          engine:
+            'tesseract.js',
+
+          experimental:
+            false,
+
           text:
             pageResults
               .map(
@@ -239,6 +371,48 @@ app.post(
         },
       });
     } catch (error) {
+      if (
+        error instanceof
+        InvalidOcrModeError
+      ) {
+        response
+          .status(400)
+          .json({
+            ok: false,
+            error:
+              'OCR_MODE_INVALID',
+            message:
+              error.message,
+          });
+
+        return;
+      }
+
+      if (
+        error instanceof
+        HandwritingOcrError
+      ) {
+        response
+          .status(
+            error.code ===
+              'HANDWRITING_RUNTIME_UNAVAILABLE'
+              ? 503
+              : error.code ===
+                  'HANDWRITING_INVALID_IMAGE'
+                ? 400
+                : 500,
+          )
+          .json({
+            ok: false,
+            error:
+              error.code,
+            message:
+              error.message,
+          });
+
+        return;
+      }
+
       if (
         error instanceof
         DocumentPreparationError
