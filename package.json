@@ -25,7 +25,8 @@
     "benchmark:handwriting-preprocessing": "tsx benchmark/handwriting-preprocessing-matrix.ts",
     "benchmark:handwriting-final": "bash scripts/run-handwriting-final.sh",
     "benchmark:final": "tsx benchmark/final.ts",
-    "benchmark:handwriting-performance": "bash scripts/run-handwriting-performance.sh"
+    "benchmark:handwriting-performance": "bash scripts/run-handwriting-performance.sh",
+    "benchmark:handwriting-v2-final": "tsx benchmark/handwriting-v2-final.ts"
   },
   "keywords": [],
   "author": "",
