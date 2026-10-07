@@ -5,15 +5,36 @@ import {
   stopMediaStream,
 } from './camera.mjs';
 
+import {
+  buildHandwritingReviewModel,
+  formatConfidencePercent,
+  structuredFieldDisplayValue,
+  structuredFieldStatusLabel,
+  structuredFieldTypeLabel,
+} from './handwriting-review.mjs';
+
 const fileInput =
   document.getElementById(
     'fileInput',
   );
 
-const ocrMode =
-  document.getElementById(
-    'ocrMode',
+const ocrModeInputs =
+  Array.from(
+    document.querySelectorAll(
+      'input[name="ocrMode"]',
+    ),
   );
+
+
+function selectedOcrMode() {
+  return (
+    ocrModeInputs.find(
+      (input) =>
+        input.checked,
+    )?.value ??
+    'printed'
+  );
+}
 
 const modeHelp =
   document.getElementById(
@@ -29,6 +50,52 @@ const result =
   document.getElementById(
     'ocrResult',
   );
+
+const metadataResult =
+  document.getElementById(
+    'ocrMetadata',
+  );
+
+const metadataDetails =
+  document.getElementById(
+    'ocrMetadataDetails',
+  );
+
+const handwritingReview =
+  document.getElementById(
+    'handwritingReview',
+  );
+
+const reviewBadge =
+  document.getElementById(
+    'reviewBadge',
+  );
+
+const reviewCharacterCount =
+  document.getElementById(
+    'reviewCharacterCount',
+  );
+
+const reviewFallbackCount =
+  document.getElementById(
+    'reviewFallbackCount',
+  );
+
+const reviewText =
+  document.getElementById(
+    'reviewText',
+  );
+
+const structuredFields =
+  document.getElementById(
+    'structuredFields',
+  );
+
+const rawHandwritingText =
+  document.getElementById(
+    'rawHandwritingText',
+  );
+
 
 const cameraPanel =
   document.getElementById(
@@ -81,26 +148,348 @@ function setStatus(
     message;
 }
 
-ocrMode.addEventListener(
-  'change',
-  () => {
-    if (
-      ocrMode.value ===
-      'handwritten'
-    ) {
-      modeHelp.textContent =
-        'Usa Manuscrito para fotografías o imágenes con escritura a mano. Esta ruta es experimental y requiere revisión.';
-    } else {
-      modeHelp.textContent =
-        'Usa Texto impreso para documentos mecanografiados o impresos.';
+for (
+  const input
+  of ocrModeInputs
+) {
+  input.addEventListener(
+    'change',
+    () => {
+      const mode =
+        selectedOcrMode();
+
+      if (
+        mode ===
+        'handwritten'
+      ) {
+        modeHelp.textContent =
+          'Usa Manuscrito para fotografías o imágenes con escritura a mano. Esta ruta es experimental y requiere revisión.';
+      } else {
+        modeHelp.textContent =
+          'Usa Texto impreso para documentos mecanografiados o impresos.';
+      }
+
+      result.textContent =
+        '';
+
+      metadataResult.textContent =
+        '';
+
+      metadataDetails.open =
+        false;
+
+      clearHandwritingReview();
+
+      setStatus(
+        'Listo para procesar un documento.',
+      );
+    },
+  );
+}
+
+
+function clearHandwritingReview() {
+  handwritingReview.hidden =
+    true;
+
+  reviewText.replaceChildren();
+
+  structuredFields
+    .replaceChildren();
+
+  rawHandwritingText.textContent =
+    '';
+}
+
+
+function createReviewCharacter(
+  character,
+) {
+  const span =
+    document.createElement(
+      'span',
+    );
+
+  span.textContent =
+    character.char;
+
+  span.classList.add(
+    'review-character',
+  );
+
+  span.classList.add(
+    character.review.level ===
+      'fallback'
+      ? 'review-character-fallback'
+      : 'review-character-review',
+  );
+
+  span.title =
+    `${
+      character.review.label
+    } · ${
+      formatConfidencePercent(
+        character.confidence,
+      )
+    }`;
+
+  return span;
+}
+
+
+function renderStructuredFields(
+  fields,
+) {
+  structuredFields
+    .replaceChildren();
+
+  if (!fields.length) {
+    const empty =
+      document.createElement(
+        'p',
+      );
+
+    empty.className =
+      'structured-empty';
+
+    empty.textContent =
+      'No se detectaron campos estructurados seguros.';
+
+    structuredFields.append(
+      empty,
+    );
+
+    return;
+  }
+
+  for (const field of fields) {
+    const display =
+      structuredFieldDisplayValue(
+        field,
+      );
+
+    const item =
+      document.createElement(
+        'article',
+      );
+
+    item.className =
+      'structured-field';
+
+    const header =
+      document.createElement(
+        'div',
+      );
+
+    header.className =
+      'structured-field-header';
+
+    const type =
+      document.createElement(
+        'strong',
+      );
+
+    type.textContent =
+      structuredFieldTypeLabel(
+        field.fieldType,
+      );
+
+    const statusLabel =
+      document.createElement(
+        'span',
+      );
+
+    statusLabel.className =
+      'structured-status';
+
+    statusLabel.textContent =
+      structuredFieldStatusLabel(
+        display.status,
+      );
+
+    header.append(
+      type,
+      statusLabel,
+    );
+
+    const raw =
+      document.createElement(
+        'div',
+      );
+
+    raw.className =
+      'structured-value';
+
+    raw.innerHTML =
+      '<span>Leído</span>';
+
+    const rawValue =
+      document.createElement(
+        'code',
+      );
+
+    rawValue.textContent =
+      display.raw;
+
+    raw.append(
+      rawValue,
+    );
+
+    item.append(
+      header,
+      raw,
+    );
+
+    if (display.changed) {
+      const resolved =
+        document.createElement(
+          'div',
+        );
+
+      resolved.className =
+        'structured-value structured-resolved';
+
+      resolved.innerHTML =
+        '<span>Normalizado</span>';
+
+      const resolvedValue =
+        document.createElement(
+          'code',
+        );
+
+      resolvedValue.textContent =
+        display.resolved;
+
+      resolved.append(
+        resolvedValue,
+      );
+
+      item.append(
+        resolved,
+      );
     }
 
-    result.textContent = '';
-    setStatus(
-      'Listo para procesar un documento.',
+    if (
+      display.resolved === null
+    ) {
+      const unresolved =
+        document.createElement(
+          'p',
+        );
+
+      unresolved.className =
+        'structured-warning';
+
+      unresolved.textContent =
+        'Valor no resuelto automáticamente.';
+
+      item.append(
+        unresolved,
+      );
+    }
+
+    structuredFields.append(
+      item,
     );
-  },
-);
+  }
+}
+
+
+function renderHandwritingReview(
+  ocr,
+) {
+  const model =
+    buildHandwritingReviewModel(
+      ocr,
+    );
+
+  if (!model) {
+    clearHandwritingReview();
+    return;
+  }
+
+  handwritingReview.hidden =
+    false;
+
+  reviewBadge.textContent =
+    model.requiresReview
+      ? 'Revisión requerida'
+      : 'Sin revisión';
+
+  reviewCharacterCount.textContent =
+    String(
+      model.characterCount,
+    );
+
+  reviewFallbackCount.textContent =
+    String(
+      model.fallbackCharacterCount,
+    );
+
+  rawHandwritingText.textContent =
+    model.rawText;
+
+  reviewText.replaceChildren();
+
+  if (model.lines.length > 0) {
+    for (
+      const [
+        lineIndex,
+        line,
+      ]
+      of model.lines.entries()
+    ) {
+      const lineElement =
+        document.createElement(
+          'div',
+        );
+
+      lineElement.className =
+        'review-line';
+
+      for (
+        const character
+        of line.characters
+      ) {
+        lineElement.append(
+          createReviewCharacter(
+            character,
+          ),
+        );
+      }
+
+      reviewText.append(
+        lineElement,
+      );
+
+      if (
+        lineIndex <
+        model.lines.length - 1
+      ) {
+        reviewText.append(
+          document.createTextNode(
+            '\n',
+          ),
+        );
+      }
+    }
+  } else {
+    for (
+      const character
+      of model.characters
+    ) {
+      reviewText.append(
+        createReviewCharacter(
+          character,
+        ),
+      );
+    }
+  }
+
+  renderStructuredFields(
+    model.structuredFields,
+  );
+}
 
 
 function clearPreviewUrl() {
@@ -154,18 +543,29 @@ async function submitOcr(
     source,
   );
 
+  const selectedMode =
+    selectedOcrMode();
+
   form.append(
     'mode',
-    ocrMode.value,
+    selectedMode,
   );
 
   setStatus(
-    ocrMode.value === 'handwritten'
-      ? 'Procesando manuscrito con CRAFT + TrOCR...'
+    selectedMode === 'handwritten'
+      ? 'Procesando manuscrito con CRAFT + Kraken...'
       : 'Procesando texto impreso con Tesseract...',
   );
 
   result.textContent = '';
+
+  metadataResult.textContent =
+    '';
+
+  metadataDetails.open =
+    false;
+
+  clearHandwritingReview();
 
   const response =
     await fetch(
@@ -210,27 +610,28 @@ async function submitOcr(
       ? 'Manuscrito'
       : 'Texto impreso';
 
-  const warning =
-    payload.ocr.experimental
-      ? 'ADVERTENCIA: reconocimiento manuscrito experimental; revise el texto obtenido.'
-      : null;
+  result.textContent =
+    payload.ocr.text;
 
-  result.textContent = [
+  metadataResult.textContent = [
     `Origen: ${payload.document.source}`,
     `Formato: ${payload.document.kind}`,
     `Modo: ${mode}`,
     `Motor: ${engine}`,
     `Confianza: ${confidence}`,
     `Calidad: ${quality}`,
-    ...(warning
-      ? [
-          '',
-          warning,
-        ]
-      : []),
-    '',
-    payload.ocr.text,
   ].join('\n');
+
+  if (
+    payload.ocr.mode ===
+    'handwritten'
+  ) {
+    renderHandwritingReview(
+      payload.ocr,
+    );
+  } else {
+    clearHandwritingReview();
+  }
 
   setStatus(
     payload.ocr.quality

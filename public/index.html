@@ -18,41 +18,49 @@
 
 <body>
   <main class="shell">
-    <header>
-      <p class="eyebrow">
-        Laboratorio independiente
-      </p>
-
-      <h1>TEVI OCR</h1>
-
-      <p>
-        Carga un documento o captura una fotografía para ejecutar OCR.
-      </p>
-    </header>
-
     <section class="card">
       <h2>Entrada</h2>
 
-      <div>
-        <label for="ocrMode">
+      <fieldset
+        class="mode-selector"
+        aria-describedby="modeHelp"
+      >
+        <legend>
           Tipo de documento
-        </label>
+        </legend>
 
-        <select id="ocrMode">
-          <option value="printed">
-            Texto impreso
-          </option>
+        <div class="mode-options">
+          <label class="mode-option">
+            <input
+              type="radio"
+              name="ocrMode"
+              value="printed"
+              checked
+            >
 
-          <option value="handwritten">
-            Manuscrito
-          </option>
-        </select>
+            <span>
+              Texto impreso
+            </span>
+          </label>
 
+          <label class="mode-option">
+            <input
+              type="radio"
+              name="ocrMode"
+              value="handwritten"
+            >
+
+            <span>
+              Manuscrito
+            </span>
+          </label>
+        </div>
+        <br>
         <p id="modeHelp">
           Usa Texto impreso para documentos mecanografiados o impresos.
         </p>
-      </div>
-
+      </fieldset>
+      <br>
       <div class="actions">
         <button
           id="selectFile"
@@ -159,6 +167,115 @@
         id="ocrResult"
         class="result"
       ></pre>
+
+      <details
+        id="ocrMetadataDetails"
+        class="result-details"
+      >
+        <summary>
+          Información complementaria
+        </summary>
+
+        <pre
+          id="ocrMetadata"
+          class="result metadata-result"
+        ></pre>
+      </details>
+    </section>
+
+    <section
+      id="handwritingReview"
+      class="card review-panel"
+      hidden
+    >
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">
+            Revisión asistida
+          </p>
+
+          <h2>
+            Confianza manuscrita
+          </h2>
+        </div>
+
+        <span
+          id="reviewBadge"
+          class="review-badge"
+        >
+          Revisión requerida
+        </span>
+      </div>
+
+      <div class="review-metrics">
+        <article class="review-metric">
+          <span>Total caracteres</span>
+          <strong id="reviewCharacterCount">
+            0
+          </strong>
+        </article>
+
+        <article class="review-metric">
+          <span>Baja confianza</span>
+          <strong id="reviewFallbackCount">
+            0
+          </strong>
+        </article>
+      </div>
+
+      <div class="review-section">
+        <div class="review-section-heading">
+          <div>
+            <h3>
+              Texto reconocido
+            </h3>
+
+            <p>
+              Los caracteres resaltados requieren atención.
+            </p>
+          </div>
+
+          <div class="review-legend">
+            <span class="legend-item">
+              <span class="legend-mark review"></span>
+              Revisión
+            </span>
+
+            <span class="legend-item">
+              <span class="legend-mark fallback"></span>
+              &lt; 70%
+            </span>
+          </div>
+        </div>
+
+        <div
+          id="reviewText"
+          class="review-text"
+          aria-label="Texto manuscrito con confianza por carácter"
+        ></div>
+      </div>
+
+      <details class="review-details">
+        <summary>
+          Campos estructurados
+        </summary>
+
+        <div
+          id="structuredFields"
+          class="structured-fields"
+        ></div>
+      </details>
+
+      <details class="raw-text-details">
+        <summary>
+          Ver texto OCR bruto
+        </summary>
+
+        <pre
+          id="rawHandwritingText"
+          class="result raw-result"
+        ></pre>
+      </details>
     </section>
   </main>
 
