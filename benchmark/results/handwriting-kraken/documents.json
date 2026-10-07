@@ -1,0 +1,1176 @@
+{
+  "model": "10.5281/zenodo.21788405",
+  "recognizer": "Kraken 7.1.1 / PP-OCRv6 small",
+  "groundTruthUsed": false,
+  "documents": [
+    {
+      "id": "handwritten-print-legible-01",
+      "category": "print-legible",
+      "lineCount": 7,
+      "lines": [
+        {
+          "lineNumber": 1,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-print-legible-01-01.jpg",
+          "memberIds": [
+            "F01",
+            "H01",
+            "F02",
+            "H02"
+          ],
+          "bbox": {
+            "x1": 486,
+            "y1": 99,
+            "x2": 1511,
+            "y2": 310
+          },
+          "text": "Soricio de Impvestos Nacinalos",
+          "status": "OK",
+          "recognitionSeconds": 0.10982501300077274
+        },
+        {
+          "lineNumber": 2,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-print-legible-01-02.jpg",
+          "memberIds": [
+            "F03",
+            "F04",
+            "H03",
+            "F06",
+            "F07",
+            "F05",
+            "H04"
+          ],
+          "bbox": {
+            "x1": 22,
+            "y1": 247,
+            "x2": 1251,
+            "y2": 531
+          },
+          "text": "Retnia. Receo tnibitrio gestion 2026",
+          "status": "OK",
+          "recognitionSeconds": 0.06633018299999094
+        },
+        {
+          "lineNumber": 3,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-print-legible-01-03.jpg",
+          "memberIds": [
+            "H05",
+            "F08",
+            "H06",
+            "H07",
+            "H08",
+            "H09",
+            "F09",
+            "H10"
+          ],
+          "bbox": {
+            "x1": 42,
+            "y1": 414,
+            "x2": 1252,
+            "y2": 647
+          },
+          "text": "El conthibgente solicita reuisioń del trámite",
+          "status": "OK",
+          "recognitionSeconds": 0.066005476999635
+        },
+        {
+          "lineNumber": 4,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-print-legible-01-04.jpg",
+          "memberIds": [
+            "H11"
+          ],
+          "bbox": {
+            "x1": 59,
+            "y1": 616,
+            "x2": 632,
+            "y2": 746
+          },
+          "text": "VIT: 102030 4050",
+          "status": "OK",
+          "recognitionSeconds": 0.06805024200002663
+        },
+        {
+          "lineNumber": 5,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-print-legible-01-05.jpg",
+          "memberIds": [
+            "F10",
+            "H12"
+          ],
+          "bbox": {
+            "x1": 24,
+            "y1": 697,
+            "x2": 668,
+            "y2": 912
+          },
+          "text": "Código: TV:-001-2026",
+          "status": "OK",
+          "recognitionSeconds": 0.07237092099967413
+        },
+        {
+          "lineNumber": 6,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-print-legible-01-06.jpg",
+          "memberIds": [
+            "H13",
+            "H14",
+            "H15"
+          ],
+          "bbox": {
+            "x1": 40,
+            "y1": 852,
+            "x2": 657,
+            "y2": 971
+          },
+          "text": "Moło Bs. 3,880, 50",
+          "status": "OK",
+          "recognitionSeconds": 0.08247760599988396
+        },
+        {
+          "lineNumber": 7,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-print-legible-01-07.jpg",
+          "memberIds": [
+            "H16"
+          ],
+          "bbox": {
+            "x1": 26,
+            "y1": 954,
+            "x2": 527,
+            "y2": 1102
+          },
+          "text": "Fecha: 06/10/26",
+          "status": "OK",
+          "recognitionSeconds": 0.047118196000155876
+        }
+      ],
+      "text": "Soricio de Impvestos Nacinalos\nRetnia. Receo tnibitrio gestion 2026\nEl conthibgente solicita reuisioń del trámite\nVIT: 102030 4050\nCódigo: TV:-001-2026\nMoło Bs. 3,880, 50\nFecha: 06/10/26"
+    },
+    {
+      "id": "handwritten-print-legible-02",
+      "category": "print-legible",
+      "lineCount": 7,
+      "lines": [
+        {
+          "lineNumber": 1,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-print-legible-02-01.jpg",
+          "memberIds": [
+            "F01",
+            "H01"
+          ],
+          "bbox": {
+            "x1": 19,
+            "y1": 59,
+            "x2": 729,
+            "y2": 287
+          },
+          "text": "Solicito de Revsión",
+          "status": "OK",
+          "recognitionSeconds": 0.051228169999376405
+        },
+        {
+          "lineNumber": 2,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-print-legible-02-02.jpg",
+          "memberIds": [
+            "H02",
+            "H03",
+            "H04",
+            "F02",
+            "H05"
+          ],
+          "bbox": {
+            "x1": 44,
+            "y1": 292,
+            "x2": 1325,
+            "y2": 474
+          },
+          "text": "Solicito vcripicar la docamentacioń presentada",
+          "status": "OK",
+          "recognitionSeconds": 0.08382795699981216
+        },
+        {
+          "lineNumber": 3,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-print-legible-02-03.jpg",
+          "memberIds": [
+            "H06",
+            "F04",
+            "H07",
+            "H08",
+            "H09",
+            "F03",
+            "H10"
+          ],
+          "bbox": {
+            "x1": 50,
+            "y1": 436,
+            "x2": 1190,
+            "y2": 574
+          },
+          "text": "Gcomunicar coalquier observación pendiente.",
+          "status": "OK",
+          "recognitionSeconds": 0.09547189899967634
+        },
+        {
+          "lineNumber": 4,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-print-legible-02-04.jpg",
+          "memberIds": [
+            "F05",
+            "H11"
+          ],
+          "bbox": {
+            "x1": 56,
+            "y1": 578,
+            "x2": 665,
+            "y2": 757
+          },
+          "text": "Nιt: 4587123014",
+          "status": "OK",
+          "recognitionSeconds": 0.053147191999414645
+        },
+        {
+          "lineNumber": 5,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-print-legible-02-05.jpg",
+          "memberIds": [
+            "F06",
+            "H12"
+          ],
+          "bbox": {
+            "x1": 33,
+            "y1": 701,
+            "x2": 727,
+            "y2": 918
+          },
+          "text": "Códio: TV-125-2026",
+          "status": "OK",
+          "recognitionSeconds": 0.0565400760006014
+        },
+        {
+          "lineNumber": 6,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-print-legible-02-06.jpg",
+          "memberIds": [
+            "H13",
+            "H14",
+            "H15",
+            "H16",
+            "H17"
+          ],
+          "bbox": {
+            "x1": 42,
+            "y1": 865,
+            "x2": 698,
+            "y2": 1003
+          },
+          "text": "Monto Bs. 8. S05, 10",
+          "status": "OK",
+          "recognitionSeconds": 0.05758165400038706
+        },
+        {
+          "lineNumber": 7,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-print-legible-02-07.jpg",
+          "memberIds": [
+            "H18",
+            "H19"
+          ],
+          "bbox": {
+            "x1": 50,
+            "y1": 1000,
+            "x2": 593,
+            "y2": 1130
+          },
+          "text": "Fecha: 1S/09/26",
+          "status": "OK",
+          "recognitionSeconds": 0.05300647599960939
+        }
+      ],
+      "text": "Solicito de Revsión\nSolicito vcripicar la docamentacioń presentada\nGcomunicar coalquier observación pendiente.\nNιt: 4587123014\nCódio: TV-125-2026\nMonto Bs. 8. S05, 10\nFecha: 1S/09/26"
+    },
+    {
+      "id": "handwritten-cursive-legible-01",
+      "category": "cursive-legible",
+      "lineCount": 7,
+      "lines": [
+        {
+          "lineNumber": 1,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-cursive-legible-01-01.jpg",
+          "memberIds": [
+            "H01",
+            "F01",
+            "F02"
+          ],
+          "bbox": {
+            "x1": 122,
+            "y1": 36,
+            "x2": 1145,
+            "y2": 290
+          },
+          "text": "Seiaio de Srpustos Tamales",
+          "status": "OK",
+          "recognitionSeconds": 0.06126194799981022
+        },
+        {
+          "lineNumber": 2,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-cursive-legible-01-02.jpg",
+          "memberIds": [
+            "F03",
+            "H02",
+            "F04",
+            "H03"
+          ],
+          "bbox": {
+            "x1": 91,
+            "y1": 240,
+            "x2": 1227,
+            "y2": 448
+          },
+          "text": "Reyrincia: Recoms tuibutauio geton 2026",
+          "status": "OK",
+          "recognitionSeconds": 0.08300870099992608
+        },
+        {
+          "lineNumber": 3,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-cursive-legible-01-03.jpg",
+          "memberIds": [
+            "H04",
+            "H05",
+            "H06"
+          ],
+          "bbox": {
+            "x1": 112,
+            "y1": 401,
+            "x2": 1268,
+            "y2": 557
+          },
+          "text": "El cortubryente solicata vosion del trämite",
+          "status": "OK",
+          "recognitionSeconds": 0.1049556299994947
+        },
+        {
+          "lineNumber": 4,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-cursive-legible-01-04.jpg",
+          "memberIds": [
+            "F05",
+            "H07"
+          ],
+          "bbox": {
+            "x1": 88,
+            "y1": 591,
+            "x2": 647,
+            "y2": 727
+          },
+          "text": "NIT: 1020304850",
+          "status": "OK",
+          "recognitionSeconds": 0.11102205599945592
+        },
+        {
+          "lineNumber": 5,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-cursive-legible-01-05.jpg",
+          "memberIds": [
+            "F06",
+            "H08",
+            "F07",
+            "H09"
+          ],
+          "bbox": {
+            "x1": 60,
+            "y1": 698,
+            "x2": 662,
+            "y2": 887
+          },
+          "text": "Cóhigoν: TU- 0J-2026",
+          "status": "OK",
+          "recognitionSeconds": 0.08666934699976991
+        },
+        {
+          "lineNumber": 6,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-cursive-legible-01-06.jpg",
+          "memberIds": [
+            "H10",
+            "H11"
+          ],
+          "bbox": {
+            "x1": 77,
+            "y1": 861,
+            "x2": 640,
+            "y2": 982
+          },
+          "text": "monto: Bs. 3. 8S0,50",
+          "status": "OK",
+          "recognitionSeconds": 0.1033994689996689
+        },
+        {
+          "lineNumber": 7,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-cursive-legible-01-07.jpg",
+          "memberIds": [
+            "H12"
+          ],
+          "bbox": {
+            "x1": 79,
+            "y1": 971,
+            "x2": 572,
+            "y2": 1113
+          },
+          "text": "Tiecha: 06/10/26",
+          "status": "OK",
+          "recognitionSeconds": 0.09055998300027568
+        }
+      ],
+      "text": "Seiaio de Srpustos Tamales\nReyrincia: Recoms tuibutauio geton 2026\nEl cortubryente solicata vosion del trämite\nNIT: 1020304850\nCóhigoν: TU- 0J-2026\nmonto: Bs. 3. 8S0,50\nTiecha: 06/10/26"
+    },
+    {
+      "id": "handwritten-cursive-legible-02",
+      "category": "cursive-legible",
+      "lineCount": 7,
+      "lines": [
+        {
+          "lineNumber": 1,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-cursive-legible-02-01.jpg",
+          "memberIds": [
+            "H01",
+            "F01"
+          ],
+          "bbox": {
+            "x1": 92,
+            "y1": 29,
+            "x2": 790,
+            "y2": 221
+          },
+          "text": "Solicitud de Reorsion",
+          "status": "OK",
+          "recognitionSeconds": 0.06283116299982794
+        },
+        {
+          "lineNumber": 2,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-cursive-legible-02-02.jpg",
+          "memberIds": [
+            "H02",
+            "F02"
+          ],
+          "bbox": {
+            "x1": 79,
+            "y1": 210,
+            "x2": 1282,
+            "y2": 417
+          },
+          "text": "Solicito vriier la ocuentecin ontrda",
+          "status": "OK",
+          "recognitionSeconds": 0.08071704000030877
+        },
+        {
+          "lineNumber": 3,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-cursive-legible-02-03.jpg",
+          "memberIds": [
+            "H03",
+            "F03",
+            "H04",
+            "F04"
+          ],
+          "bbox": {
+            "x1": 182,
+            "y1": 349,
+            "x2": 1198,
+            "y2": 550
+          },
+          "text": "omerior cualgun oaeracion pendinte,",
+          "status": "OK",
+          "recognitionSeconds": 0.07409888299935119
+        },
+        {
+          "lineNumber": 4,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-cursive-legible-02-04.jpg",
+          "memberIds": [
+            "H05"
+          ],
+          "bbox": {
+            "x1": 103,
+            "y1": 536,
+            "x2": 706,
+            "y2": 693
+          },
+          "text": "N: 45871230я",
+          "status": "OK",
+          "recognitionSeconds": 0.07925412400072673
+        },
+        {
+          "lineNumber": 5,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-cursive-legible-02-05.jpg",
+          "memberIds": [
+            "F05",
+            "H06"
+          ],
+          "bbox": {
+            "x1": 91,
+            "y1": 660,
+            "x2": 768,
+            "y2": 842
+          },
+          "text": "Códlgo TV-12S-2026",
+          "status": "OK",
+          "recognitionSeconds": 0.07625347300017893
+        },
+        {
+          "lineNumber": 6,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-cursive-legible-02-06.jpg",
+          "memberIds": [
+            "H07",
+            "H08",
+            "F06",
+            "H09"
+          ],
+          "bbox": {
+            "x1": 91,
+            "y1": 776,
+            "x2": 939,
+            "y2": 975
+          },
+          "text": "Monts: Bs. 8. 50, 10",
+          "status": "OK",
+          "recognitionSeconds": 0.08340826299991022
+        },
+        {
+          "lineNumber": 7,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-cursive-legible-02-07.jpg",
+          "memberIds": [
+            "H10"
+          ],
+          "bbox": {
+            "x1": 95,
+            "y1": 943,
+            "x2": 633,
+            "y2": 1084
+          },
+          "text": "Fecha: 15/09/26",
+          "status": "OK",
+          "recognitionSeconds": 0.06808566399922711
+        }
+      ],
+      "text": "Solicitud de Reorsion\nSolicito vriier la ocuentecin ontrda\nomerior cualgun oaeracion pendinte,\nN: 45871230я\nCódlgo TV-12S-2026\nMonts: Bs. 8. 50, 10\nFecha: 15/09/26"
+    },
+    {
+      "id": "handwritten-irregular-01",
+      "category": "irregular",
+      "lineCount": 7,
+      "lines": [
+        {
+          "lineNumber": 1,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-irregular-01-01.jpg",
+          "memberIds": [
+            "H01",
+            "H02",
+            "F01",
+            "H03",
+            "H04"
+          ],
+          "bbox": {
+            "x1": 223,
+            "y1": 72,
+            "x2": 1184,
+            "y2": 278
+          },
+          "text": "Servicio de Impestes Nacionales",
+          "status": "OK",
+          "recognitionSeconds": 0.08144571599950723
+        },
+        {
+          "lineNumber": 2,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-irregular-01-02.jpg",
+          "memberIds": [
+            "F02",
+            "H05",
+            "F03",
+            "H06"
+          ],
+          "bbox": {
+            "x1": 57,
+            "y1": 272,
+            "x2": 1236,
+            "y2": 473
+          },
+          "text": "Rérincia: Reobmo trhiterio gestoń 2026",
+          "status": "OK",
+          "recognitionSeconds": 0.12059837100059667
+        },
+        {
+          "lineNumber": 3,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-irregular-01-03.jpg",
+          "memberIds": [
+            "H07",
+            "H08",
+            "H09",
+            "H10",
+            "H11",
+            "H12",
+            "H13",
+            "F04",
+            "H14"
+          ],
+          "bbox": {
+            "x1": 91,
+            "y1": 459,
+            "x2": 1339,
+            "y2": 629
+          },
+          "text": "El condribogente solicita rausion del tráite",
+          "status": "OK",
+          "recognitionSeconds": 0.11125129100037157
+        },
+        {
+          "lineNumber": 4,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-irregular-01-04.jpg",
+          "memberIds": [
+            "H15",
+            "H16"
+          ],
+          "bbox": {
+            "x1": 93,
+            "y1": 658,
+            "x2": 733,
+            "y2": 770
+          },
+          "text": "NIT: L0203040s0",
+          "status": "OK",
+          "recognitionSeconds": 0.07082102300046245
+        },
+        {
+          "lineNumber": 5,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-irregular-01-05.jpg",
+          "memberIds": [
+            "F05",
+            "H17",
+            "H18"
+          ],
+          "bbox": {
+            "x1": 90,
+            "y1": 742,
+            "x2": 734,
+            "y2": 926
+          },
+          "text": "Códio: Tu-00)-226",
+          "status": "OK",
+          "recognitionSeconds": 0.060379712999747426
+        },
+        {
+          "lineNumber": 6,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-irregular-01-06.jpg",
+          "memberIds": [
+            "H19",
+            "F06",
+            "H20"
+          ],
+          "bbox": {
+            "x1": 77,
+            "y1": 885,
+            "x2": 762,
+            "y2": 1015
+          },
+          "text": "Monte: Bs: 3. 8S9, 50",
+          "status": "OK",
+          "recognitionSeconds": 0.0651907339997706
+        },
+        {
+          "lineNumber": 7,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-irregular-01-07.jpg",
+          "memberIds": [
+            "H21",
+            "H22",
+            "H23"
+          ],
+          "bbox": {
+            "x1": 65,
+            "y1": 1002,
+            "x2": 610,
+            "y2": 1134
+          },
+          "text": "Techa : 06 /20/25",
+          "status": "OK",
+          "recognitionSeconds": 0.04476453000006586
+        }
+      ],
+      "text": "Servicio de Impestes Nacionales\nRérincia: Reobmo trhiterio gestoń 2026\nEl condribogente solicita rausion del tráite\nNIT: L0203040s0\nCódio: Tu-00)-226\nMonte: Bs: 3. 8S9, 50\nTecha : 06 /20/25"
+    },
+    {
+      "id": "handwritten-irregular-02",
+      "category": "irregular",
+      "lineCount": 7,
+      "lines": [
+        {
+          "lineNumber": 1,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-irregular-02-01.jpg",
+          "memberIds": [
+            "H01",
+            "F01"
+          ],
+          "bbox": {
+            "x1": 108,
+            "y1": 58,
+            "x2": 954,
+            "y2": 311
+          },
+          "text": "Solicitod de Reusión",
+          "status": "OK",
+          "recognitionSeconds": 0.05241066799953842
+        },
+        {
+          "lineNumber": 2,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-irregular-02-02.jpg",
+          "memberIds": [
+            "H02",
+            "H03",
+            "H04",
+            "F02",
+            "H05",
+            "H06",
+            "H07"
+          ],
+          "bbox": {
+            "x1": 37,
+            "y1": 320,
+            "x2": 1399,
+            "y2": 510
+          },
+          "text": "Solicito vorificor la dearmmtacion presentada",
+          "status": "OK",
+          "recognitionSeconds": 0.08557838100023218
+        },
+        {
+          "lineNumber": 3,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-irregular-02-03.jpg",
+          "memberIds": [
+            "H08",
+            "H09",
+            "H10",
+            "F03",
+            "H11",
+            "F04",
+            "H12"
+          ],
+          "bbox": {
+            "x1": 71,
+            "y1": 474,
+            "x2": 1286,
+            "y2": 654
+          },
+          "text": "g eomenicor cualquior observoain pend:onte",
+          "status": "OK",
+          "recognitionSeconds": 0.092267756000183
+        },
+        {
+          "lineNumber": 4,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-irregular-02-04.jpg",
+          "memberIds": [
+            "H13"
+          ],
+          "bbox": {
+            "x1": 91,
+            "y1": 609,
+            "x2": 764,
+            "y2": 772
+          },
+          "text": "NIT: S87123019",
+          "status": "OK",
+          "recognitionSeconds": 0.05697211500046251
+        },
+        {
+          "lineNumber": 5,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-irregular-02-05.jpg",
+          "memberIds": [
+            "F05",
+            "H14"
+          ],
+          "bbox": {
+            "x1": 73,
+            "y1": 737,
+            "x2": 801,
+            "y2": 918
+          },
+          "text": "Cádig0 Tv- 125 -2026",
+          "status": "OK",
+          "recognitionSeconds": 0.05544162099977257
+        },
+        {
+          "lineNumber": 6,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-irregular-02-06.jpg",
+          "memberIds": [
+            "H15",
+            "H16"
+          ],
+          "bbox": {
+            "x1": 100,
+            "y1": 889,
+            "x2": 838,
+            "y2": 1034
+          },
+          "text": "Mont: BS: 8. S0S, 10",
+          "status": "OK",
+          "recognitionSeconds": 0.052074092000111705
+        },
+        {
+          "lineNumber": 7,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-irregular-02-07.jpg",
+          "memberIds": [
+            "H17",
+            "H18"
+          ],
+          "bbox": {
+            "x1": 95,
+            "y1": 1002,
+            "x2": 769,
+            "y2": 1169
+          },
+          "text": "Fecha:. AS /09/26",
+          "status": "OK",
+          "recognitionSeconds": 0.04575521800052229
+        }
+      ],
+      "text": "Solicitod de Reusión\nSolicito vorificor la dearmmtacion presentada\ng eomenicor cualquior observoain pend:onte\nNIT: S87123019\nCádig0 Tv- 125 -2026\nMont: BS: 8. S0S, 10\nFecha:. AS /09/26"
+    },
+    {
+      "id": "handwritten-photo-perspective-01",
+      "category": "photo-perspective",
+      "lineCount": 12,
+      "lines": [
+        {
+          "lineNumber": 1,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-photo-perspective-01-01.jpg",
+          "memberIds": [
+            "H01",
+            "H02",
+            "F01"
+          ],
+          "bbox": {
+            "x1": 324,
+            "y1": 256,
+            "x2": 1431,
+            "y2": 406
+          },
+          "text": "Soliaitud de Revisionadé raentada",
+          "status": "OK",
+          "recognitionSeconds": 0.08302924300005543
+        },
+        {
+          "lineNumber": 2,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-photo-perspective-01-02.jpg",
+          "memberIds": [
+            "H03",
+            "F02",
+            "H04"
+          ],
+          "bbox": {
+            "x1": 788,
+            "y1": 307,
+            "x2": 1347,
+            "y2": 486
+          },
+          "text": "la docurten a o d iene.",
+          "status": "OK",
+          "recognitionSeconds": 0.04893788100071106
+        },
+        {
+          "lineNumber": 3,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-photo-perspective-01-03.jpg",
+          "memberIds": [
+            "F05",
+            "H05",
+            "F04",
+            "F06",
+            "F03"
+          ],
+          "bbox": {
+            "x1": 344,
+            "y1": 374,
+            "x2": 1262,
+            "y2": 552
+          },
+          "text": "Solicio uriica la deeen ordi",
+          "status": "OK",
+          "recognitionSeconds": 0.08096720300000015
+        },
+        {
+          "lineNumber": 4,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-photo-perspective-01-04.jpg",
+          "memberIds": [
+            "F08",
+            "H06",
+            "F07"
+          ],
+          "bbox": {
+            "x1": 404,
+            "y1": 475,
+            "x2": 855,
+            "y2": 615
+          },
+          "text": "comunicar coal quier",
+          "status": "OK",
+          "recognitionSeconds": 0.06794898999942234
+        },
+        {
+          "lineNumber": 5,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-photo-perspective-01-05.jpg",
+          "memberIds": [
+            "H07"
+          ],
+          "bbox": {
+            "x1": 365,
+            "y1": 553,
+            "x2": 431,
+            "y2": 637
+          },
+          "text": "ن",
+          "status": "OK",
+          "recognitionSeconds": 0.040246537000712124
+        },
+        {
+          "lineNumber": 6,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-photo-perspective-01-06.jpg",
+          "memberIds": [
+            "F09"
+          ],
+          "bbox": {
+            "x1": 524,
+            "y1": 600,
+            "x2": 908,
+            "y2": 747
+          },
+          "text": "4587123019",
+          "status": "OK",
+          "recognitionSeconds": 0.06960644399987359
+        },
+        {
+          "lineNumber": 7,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-photo-perspective-01-07.jpg",
+          "memberIds": [
+            "F10",
+            "F12",
+            "H08",
+            "F11"
+          ],
+          "bbox": {
+            "x1": 355,
+            "y1": 648,
+            "x2": 1004,
+            "y2": 867
+          },
+          "text": "-25-2026",
+          "status": "OK",
+          "recognitionSeconds": 0.07523798000056559
+        },
+        {
+          "lineNumber": 8,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-photo-perspective-01-08.jpg",
+          "memberIds": [
+            "H10",
+            "H09"
+          ],
+          "bbox": {
+            "x1": 360,
+            "y1": 764,
+            "x2": 693,
+            "y2": 926
+          },
+          "text": "Códig T",
+          "status": "OK",
+          "recognitionSeconds": 0.06392752900046617
+        },
+        {
+          "lineNumber": 9,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-photo-perspective-01-09.jpg",
+          "memberIds": [
+            "H12",
+            "F13",
+            "H11"
+          ],
+          "bbox": {
+            "x1": 698,
+            "y1": 830,
+            "x2": 1004,
+            "y2": 968
+          },
+          "text": "8 505, 10",
+          "status": "OK",
+          "recognitionSeconds": 0.06486457199935103
+        },
+        {
+          "lineNumber": 10,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-photo-perspective-01-10.jpg",
+          "memberIds": [
+            "F14",
+            "H14",
+            "H13"
+          ],
+          "bbox": {
+            "x1": 360,
+            "y1": 899,
+            "x2": 685,
+            "y2": 1055
+          },
+          "text": "Monto Bs",
+          "status": "OK",
+          "recognitionSeconds": 0.04256157600048027
+        },
+        {
+          "lineNumber": 11,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-photo-perspective-01-11.jpg",
+          "memberIds": [
+            "H15",
+            "F15"
+          ],
+          "bbox": {
+            "x1": 574,
+            "y1": 975,
+            "x2": 930,
+            "y2": 1164
+          },
+          "text": "15/09/26",
+          "status": "OK",
+          "recognitionSeconds": 0.039904203999867605
+        },
+        {
+          "lineNumber": 12,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-photo-perspective-01-12.jpg",
+          "memberIds": [
+            "F16"
+          ],
+          "bbox": {
+            "x1": 372,
+            "y1": 1056,
+            "x2": 571,
+            "y2": 1193
+          },
+          "text": "Fecha",
+          "status": "OK",
+          "recognitionSeconds": 0.047712084000522736
+        }
+      ],
+      "text": "Soliaitud de Revisionadé raentada\nla docurten a o d iene.\nSolicio uriica la deeen ordi\ncomunicar coal quier\nن\n4587123019\n-25-2026\nCódig T\n8 505, 10\nMonto Bs\n15/09/26\nFecha"
+    },
+    {
+      "id": "handwritten-photo-low-light-01",
+      "category": "photo-low-light",
+      "lineCount": 7,
+      "lines": [
+        {
+          "lineNumber": 1,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-photo-low-light-01-01.jpg",
+          "memberIds": [
+            "F01",
+            "H01"
+          ],
+          "bbox": {
+            "x1": 147,
+            "y1": 99,
+            "x2": 817,
+            "y2": 314
+          },
+          "text": "Soliaitod de Ravision",
+          "status": "OK",
+          "recognitionSeconds": 0.03851127599955362
+        },
+        {
+          "lineNumber": 2,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-photo-low-light-01-02.jpg",
+          "memberIds": [
+            "H02",
+            "H03",
+            "H04",
+            "H05"
+          ],
+          "bbox": {
+            "x1": 165,
+            "y1": 322,
+            "x2": 1370,
+            "y2": 486
+          },
+          "text": "Solicito verieicar la docmntacioń prcsontada",
+          "status": "OK",
+          "recognitionSeconds": 0.07730208599969046
+        },
+        {
+          "lineNumber": 3,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-photo-low-light-01-03.jpg",
+          "memberIds": [
+            "H06",
+            "F02",
+            "H07",
+            "H08"
+          ],
+          "bbox": {
+            "x1": 169,
+            "y1": 453,
+            "x2": 1244,
+            "y2": 603
+          },
+          "text": "y comunicar evalquier obsorvaaion pendiente.",
+          "status": "OK",
+          "recognitionSeconds": 0.08358949600005872
+        },
+        {
+          "lineNumber": 4,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-photo-low-light-01-04.jpg",
+          "memberIds": [
+            "F03",
+            "H09"
+          ],
+          "bbox": {
+            "x1": 175,
+            "y1": 597,
+            "x2": 751,
+            "y2": 756
+          },
+          "text": "νιt: 4587123019",
+          "status": "OK",
+          "recognitionSeconds": 0.08310447900021245
+        },
+        {
+          "lineNumber": 5,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-photo-low-light-01-05.jpg",
+          "memberIds": [
+            "F04",
+            "H10"
+          ],
+          "bbox": {
+            "x1": 156,
+            "y1": 723,
+            "x2": 809,
+            "y2": 907
+          },
+          "text": "Código: TV- 125- 2026",
+          "status": "OK",
+          "recognitionSeconds": 0.09024638400023832
+        },
+        {
+          "lineNumber": 6,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-photo-low-light-01-06.jpg",
+          "memberIds": [
+            "H11",
+            "H12",
+            "H13"
+          ],
+          "bbox": {
+            "x1": 165,
+            "y1": 865,
+            "x2": 780,
+            "y2": 996
+          },
+          "text": "Monto: Bs. 8.805, 10",
+          "status": "OK",
+          "recognitionSeconds": 0.08147607800037804
+        },
+        {
+          "lineNumber": 7,
+          "path": "benchmark/results/handwriting-final/lines/handwritten-photo-low-light-01-07.jpg",
+          "memberIds": [
+            "H14",
+            "H15"
+          ],
+          "bbox": {
+            "x1": 170,
+            "y1": 992,
+            "x2": 678,
+            "y2": 1114
+          },
+          "text": "Fecha: 1S/09/26",
+          "status": "OK",
+          "recognitionSeconds": 0.0599478789999921
+        }
+      ],
+      "text": "Soliaitod de Ravision\nSolicito verieicar la docmntacioń prcsontada\ny comunicar evalquier obsorvaaion pendiente.\nνιt: 4587123019\nCódigo: TV- 125- 2026\nMonto: Bs. 8.805, 10\nFecha: 1S/09/26"
+    }
+  ],
+  "totalRecognitionSeconds": 4.362579956000445,
+  "modelLoadSeconds": 0.7594268650000231
+}

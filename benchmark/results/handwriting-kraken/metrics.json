@@ -1,0 +1,120 @@
+{
+  "methodology": {
+    "detector": "CRAFT horizontal+free",
+    "grouping": "geometric line grouping",
+    "crops": "frozen F7 line crops",
+    "recognizer": "Kraken 7.1.1 / PP-OCRv6 small",
+    "groundTruthDuringDetection": false,
+    "groundTruthDuringRecognition": false
+  },
+  "samples": 8,
+  "characterDistance": 535,
+  "wordDistance": 171,
+  "referenceCharacters": 1532,
+  "referenceWords": 184,
+  "cer": 0.3492167101827676,
+  "wer": 0.9293478260869565,
+  "modelLoadSeconds": 0.7594268650000231,
+  "totalRecognitionSeconds": 4.362579956000445,
+  "comparisonWithTrocr": {
+    "trocrCer": 0.46475195822454307,
+    "krakenCer": 0.3492167101827676,
+    "cerAbsoluteDelta": -0.11553524804177545,
+    "trocrWer": 0.967391304347826,
+    "krakenWer": 0.9293478260869565,
+    "werAbsoluteDelta": -0.03804347826086951,
+    "trocrRecognitionSeconds": 139.80191200199624,
+    "krakenRecognitionSeconds": 4.362579956000445,
+    "recognitionSecondsDelta": -135.4393320459958
+  },
+  "rows": [
+    {
+      "id": "handwritten-print-legible-01",
+      "category": "print-legible",
+      "lineCount": 7,
+      "characterDistance": 58,
+      "wordDistance": 20,
+      "referenceCharacters": 197,
+      "referenceWords": 24,
+      "cer": 0.29441624365482233,
+      "wer": 0.8333333333333334
+    },
+    {
+      "id": "handwritten-print-legible-02",
+      "category": "print-legible",
+      "lineCount": 7,
+      "characterDistance": 37,
+      "wordDistance": 17,
+      "referenceCharacters": 186,
+      "referenceWords": 22,
+      "cer": 0.1989247311827957,
+      "wer": 0.7727272727272727
+    },
+    {
+      "id": "handwritten-cursive-legible-01",
+      "category": "cursive-legible",
+      "lineCount": 7,
+      "characterDistance": 64,
+      "wordDistance": 22,
+      "referenceCharacters": 197,
+      "referenceWords": 24,
+      "cer": 0.3248730964467005,
+      "wer": 0.9166666666666666
+    },
+    {
+      "id": "handwritten-cursive-legible-02",
+      "category": "cursive-legible",
+      "lineCount": 7,
+      "characterDistance": 62,
+      "wordDistance": 20,
+      "referenceCharacters": 186,
+      "referenceWords": 22,
+      "cer": 0.3333333333333333,
+      "wer": 0.9090909090909091
+    },
+    {
+      "id": "handwritten-irregular-01",
+      "category": "irregular",
+      "lineCount": 7,
+      "characterDistance": 68,
+      "wordDistance": 23,
+      "referenceCharacters": 197,
+      "referenceWords": 24,
+      "cer": 0.34517766497461927,
+      "wer": 0.9583333333333334
+    },
+    {
+      "id": "handwritten-irregular-02",
+      "category": "irregular",
+      "lineCount": 7,
+      "characterDistance": 57,
+      "wordDistance": 23,
+      "referenceCharacters": 186,
+      "referenceWords": 22,
+      "cer": 0.3064516129032258,
+      "wer": 1.0454545454545454
+    },
+    {
+      "id": "handwritten-photo-perspective-01",
+      "category": "photo-perspective",
+      "lineCount": 12,
+      "characterDistance": 149,
+      "wordDistance": 30,
+      "referenceCharacters": 197,
+      "referenceWords": 24,
+      "cer": 0.7563451776649747,
+      "wer": 1.25
+    },
+    {
+      "id": "handwritten-photo-low-light-01",
+      "category": "photo-low-light",
+      "lineCount": 7,
+      "characterDistance": 40,
+      "wordDistance": 16,
+      "referenceCharacters": 186,
+      "referenceWords": 22,
+      "cer": 0.21505376344086022,
+      "wer": 0.7272727272727273
+    }
+  ]
+}
