@@ -1,0 +1,66 @@
+[
+  {
+    "id": "handwritten-print-legible-01",
+    "category": "print-legible",
+    "fixturePath": "tests/fixtures/handwritten/handwritten-print-legible-01.jpg",
+    "groundTruthPath": "benchmark/ground-truth/handwritten/handwritten-print-legible-01.txt",
+    "writerId": "writer-01",
+    "capture": "photo"
+  },
+  {
+    "id": "handwritten-print-legible-02",
+    "category": "print-legible",
+    "fixturePath": "tests/fixtures/handwritten/handwritten-print-legible-02.jpg",
+    "groundTruthPath": "benchmark/ground-truth/handwritten/handwritten-print-legible-02.txt",
+    "writerId": "writer-02",
+    "capture": "photo"
+  },
+  {
+    "id": "handwritten-cursive-legible-01",
+    "category": "cursive-legible",
+    "fixturePath": "tests/fixtures/handwritten/handwritten-cursive-legible-01.jpg",
+    "groundTruthPath": "benchmark/ground-truth/handwritten/handwritten-cursive-legible-01.txt",
+    "writerId": "writer-01",
+    "capture": "photo"
+  },
+  {
+    "id": "handwritten-cursive-legible-02",
+    "category": "cursive-legible",
+    "fixturePath": "tests/fixtures/handwritten/handwritten-cursive-legible-02.jpg",
+    "groundTruthPath": "benchmark/ground-truth/handwritten/handwritten-cursive-legible-02.txt",
+    "writerId": "writer-02",
+    "capture": "photo"
+  },
+  {
+    "id": "handwritten-irregular-01",
+    "category": "irregular",
+    "fixturePath": "tests/fixtures/handwritten/handwritten-irregular-01.jpg",
+    "groundTruthPath": "benchmark/ground-truth/handwritten/handwritten-irregular-01.txt",
+    "writerId": "writer-01",
+    "capture": "photo"
+  },
+  {
+    "id": "handwritten-irregular-02",
+    "category": "irregular",
+    "fixturePath": "tests/fixtures/handwritten/handwritten-irregular-02.jpg",
+    "groundTruthPath": "benchmark/ground-truth/handwritten/handwritten-irregular-02.txt",
+    "writerId": "writer-02",
+    "capture": "photo"
+  },
+  {
+    "id": "handwritten-photo-perspective-01",
+    "category": "photo-perspective",
+    "fixturePath": "tests/fixtures/handwritten/handwritten-photo-perspective-01.jpg",
+    "groundTruthPath": "benchmark/ground-truth/handwritten/handwritten-photo-perspective-01.txt",
+    "writerId": "writer-01",
+    "capture": "photo"
+  },
+  {
+    "id": "handwritten-photo-low-light-01",
+    "category": "photo-low-light",
+    "fixturePath": "tests/fixtures/handwritten/handwritten-photo-low-light-01.jpg",
+    "groundTruthPath": "benchmark/ground-truth/handwritten/handwritten-photo-low-light-01.txt",
+    "writerId": "writer-02",
+    "capture": "photo"
+  }
+]
