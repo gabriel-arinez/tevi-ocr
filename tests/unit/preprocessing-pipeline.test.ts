@@ -69,3 +69,19 @@ test(
     );
   },
 );
+
+test(
+  'la fotografia real no debe girarse 10 grados por el fondo',
+  async () => {
+    const input = await fs.readFile(
+      'tests/fixtures/camera/foto_texto_impreso.jpeg',
+    );
+
+    const result = await preprocessForOcr(input);
+
+    assert.ok(
+      Math.abs(result.detectedAngle) < 0.5,
+      `La fotografia recibio una rotacion espuria: ${result.detectedAngle}`,
+    );
+  },
+);
