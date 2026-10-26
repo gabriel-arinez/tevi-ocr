@@ -37,13 +37,19 @@ function classifyLine(line: string, bbox: PrintedLayoutBlock['bbox']): {
     c !== c.toLocaleLowerCase('es'));
   const words = line.trim().split(/\s+/);
   const colonIndex = line.indexOf(':');
+  const label = colonIndex > 0 ? line.slice(0, colonIndex).trim() : '';
+  const labelWords = label ? label.split(/\s+/) : [];
+  const resemblesFieldLabel =
+    labelWords.length > 0 && labelWords.length <= 5 &&
+    label.length <= 48 &&
+    /^[\p{L}\s._\-]+$/u.test(label);
   return {
     // Typography, not any fixed document title or wording.
     headingLike: letters.length >= 4 && words.length <= 9 &&
       letters.length > 0 && uppercase.length / letters.length >= 0.88 &&
       bbox.width > 0,
     // A short leading label with colon is a typical field, not prose.
-    fieldLike: colonIndex > 0 && colonIndex <= 48 &&
+    fieldLike: resemblesFieldLabel &&
       colonIndex / Math.max(1, line.length) < 0.55 &&
       words.length <= 18,
   };
