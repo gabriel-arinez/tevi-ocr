@@ -165,6 +165,7 @@
 
       <div id="printedTextControls" class="actions" hidden>
         <button id="readableTextButton" type="button" aria-pressed="true">Texto legible</button>
+        <button id="geometricTextButton" type="button" class="secondary" aria-pressed="false">Estructura detectada</button>
         <button id="rawTextButton" type="button" class="secondary" aria-pressed="false">Transcripción original</button>
       </div>
       <p id="printedReviewNotice" class="ocr-note" hidden>Texto reorganizado para lectura. Verifique las palabras dudosas comparándolas con el documento original.</p>
@@ -177,6 +178,10 @@
         <summary>Palabras que requieren revisión</summary>
         <p class="ocr-note">Estas detecciones son inciertas. Ninguna se ha eliminado ni corregido automáticamente.</p>
         <ul id="printedEvidenceList" class="ocr-evidence-list"></ul>
+        <div id="printedImageOverlay" class="printed-image-overlay" hidden>
+          <img id="printedImagePreview" alt="Imagen original con detección seleccionada">
+          <div id="printedBoundingBox" class="printed-bounding-box"></div>
+        </div>
       </details>
 
       <details
