@@ -38,6 +38,11 @@ import {
   resolveOcrMode,
 } from './ocr/ocr-mode.js';
 
+import {
+  shouldVerifyPrintedDeskew,
+  preferOriginalPrintedRecognition,
+} from './ocr/printed-deskew-safety.js';
+
 const app = express();
 
 app.disable('x-powered-by');
@@ -266,8 +271,10 @@ app.post(
           result.durationMs;
 
         if (
-          documentInput.kind !== 'pdf' &&
-          Math.abs(page.detectedAngle) >= 9.5
+          shouldVerifyPrintedDeskew(
+            documentInput.kind,
+            page.detectedAngle,
+          )
         ) {
           const originalCandidate =
             await engine.recognize(
@@ -278,12 +285,9 @@ app.post(
             originalCandidate.durationMs;
 
           if (
-            originalCandidate.text.trim().length > 0 &&
-            originalCandidate.confidence !== null &&
-            (
-              result.confidence === null ||
-              originalCandidate.confidence >=
-                result.confidence + 10
+            preferOriginalPrintedRecognition(
+              result,
+              originalCandidate,
             )
           ) {
             result = originalCandidate;
