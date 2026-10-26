@@ -38,6 +38,11 @@ import {
   resolveOcrMode,
 } from './ocr/ocr-mode.js';
 
+import {
+  shouldVerifyPrintedDeskew,
+  preferOriginalPrintedRecognition,
+} from './ocr/printed-deskew-safety.js';
+
 const app = express();
 
 app.disable('x-powered-by');
@@ -249,10 +254,46 @@ app.post(
       for (
         const page of prepared.pages
       ) {
-        const result =
+        let result =
           await engine.recognize(
             page.buffer,
           );
+
+        // El detector de inclinación puede elegir el extremo (+/-10°)
+        // cuando la fotografía contiene fondo o bordes ajenos al texto.
+        // En ese caso contrastamos con el ORIGINAL, usando el MISMO
+        // Tesseract y sin aplicar una rotación potencialmente destructiva.
+        // Nunca usamos esta comparación para PDF ni para giros menores.
+        let selectedAngle =
+          page.detectedAngle;
+
+        let recognitionDurationMs =
+          result.durationMs;
+
+        if (
+          shouldVerifyPrintedDeskew(
+            documentInput.kind,
+            page.detectedAngle,
+          )
+        ) {
+          const originalCandidate =
+            await engine.recognize(
+              documentInput.buffer,
+            );
+
+          recognitionDurationMs +=
+            originalCandidate.durationMs;
+
+          if (
+            preferOriginalPrintedRecognition(
+              result,
+              originalCandidate,
+            )
+          ) {
+            result = originalCandidate;
+            selectedAngle = 0;
+          }
+        }
 
         pageResults.push({
           pageNumber:
@@ -273,10 +314,10 @@ app.post(
             }),
 
           durationMs:
-            result.durationMs,
+            recognitionDurationMs,
 
           detectedAngle:
-            page.detectedAngle,
+            selectedAngle,
 
           preprocessingDurationMs:
             page.preprocessingDurationMs,
