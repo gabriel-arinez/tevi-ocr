@@ -36,3 +36,27 @@ test('uncertain words are not silently deleted', () => {
   assert.equal(result.text, '6 Atentamente,');
   assert.equal(result.needsReview, false);
 });
+
+test('physical lines split a whole-page TSV paragraph into title, body and fields', () => {
+  const oneParagraph = [
+    word('AUTORIZACIÓN', 20, 5, 1, 1, 1),
+    word('DE', 170, 5, 1, 1, 1),
+    word('PERMISO', 205, 5, 1, 1, 1),
+    word('Por', 20, 70, 1, 1, 2),
+    word('medio', 65, 70, 1, 1, 2),
+    word('de', 120, 70, 1, 1, 2),
+    word('la', 20, 90, 1, 1, 3),
+    word('presente', 55, 90, 1, 1, 3),
+    word('Nombre:', 20, 140, 1, 1, 4),
+    word('Fidel', 135, 140, 1, 1, 4),
+    word('Carrera:', 20, 162, 1, 1, 5),
+    word('Sistemas', 135, 162, 1, 1, 5),
+  ];
+  const result = buildGeometricReadingView(oneParagraph);
+  assert.deepEqual(result.blocks.map(b => b.text), [
+    'AUTORIZACIÓN DE PERMISO',
+    'Por medio de la presente',
+    'Nombre: Fidel',
+    'Carrera: Sistemas',
+  ]);
+});
