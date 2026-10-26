@@ -773,3 +773,9 @@ button.secondary {
 .ocr-note { color: #596475; font-size: 0.875rem; line-height: 1.5; }
 .ocr-evidence-list { max-height: 14rem; overflow-y: auto; padding-left: 1.25rem; }
 .ocr-evidence-list li { margin: 0.25rem 0; overflow-wrap: anywhere; }
+
+.printed-image-overlay { position: relative; max-width: 100%; margin-top: 1rem; }
+.printed-image-overlay[hidden] { display: none; }
+.printed-image-overlay img { display: block; width: 100%; height: auto; }
+.printed-bounding-box { position: absolute; box-sizing: border-box; border: 2px solid #d92d20; background: rgb(217 45 32 / 12%); pointer-events: none; }
+.ocr-evidence-list button { text-align: left; max-width: 100%; white-space: normal; overflow-wrap: anywhere; font-size: .85rem; padding: .4rem .6rem; }

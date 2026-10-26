@@ -140,7 +140,64 @@ const closeButton =
 let mediaStream = null;
 let capturedBlob = null;
 let previewUrl = null;
-let printedTextState = { raw: '', readable: '', current: 'readable' };
+let printedTextState = { raw: '', readable: '', structured: '', current: 'readable' };
+let printedImagePreviewUrl = null;
+let lastPrintedFile = null;
+const regionalReviewResult = document.getElementById('regionalReviewResult');
+
+async function reviewPrintedWord(word) {
+  if (!lastPrintedFile || !word.canLocateOnSource) return;
+  regionalReviewResult.textContent = 'Comparando la lectura de esta región...';
+  const form = new FormData();
+  form.append('file', lastPrintedFile, lastPrintedFile.name);
+  for (const key of ['left', 'top', 'width', 'height']) {
+    form.append(key, String(word.bbox[key]));
+  }
+  try {
+    const response = await fetch('/api/ocr/region-review', {
+      method: 'POST',
+      body: form,
+    });
+    const data = await response.json();
+    if (!response.ok || !data.ok) {
+      throw new Error('No se pudo verificar la región.');
+    }
+    const alternatives = data.alternatives.map(candidate =>
+      `${candidate.type}: "${candidate.text.trim()}" (${candidate.confidence === null ? 'N/D' : candidate.confidence.toFixed(1) + '%'})`
+    );
+    regionalReviewResult.textContent = [
+      `OCR inicial: "${word.text}" (${word.confidence.toFixed(1)}%)`,
+      ...alternatives,
+      'Estas opciones no se aplican automáticamente; compare con la imagen.',
+    ].join('\n');
+  } catch (error) {
+    regionalReviewResult.textContent = error instanceof Error
+      ? error.message : 'No se pudo verificar la región.';
+  }
+}
+const geometricTextButton = document.getElementById('geometricTextButton');
+const printedImageOverlay = document.getElementById('printedImageOverlay');
+const printedImagePreview = document.getElementById('printedImagePreview');
+const printedBoundingBox = document.getElementById('printedBoundingBox');
+function revokePrintedImagePreview() {
+  if (printedImagePreviewUrl) URL.revokeObjectURL(printedImagePreviewUrl);
+  printedImagePreviewUrl = null;
+  printedImagePreview.removeAttribute('src');
+  printedImageOverlay.hidden = true;
+  regionalReviewResult.textContent = '';
+}
+function selectPrintedWord(word) {
+  if (!printedImagePreviewUrl) return;
+  const width = printedImagePreview.naturalWidth;
+  const height = printedImagePreview.naturalHeight;
+  if (!width || !height) return;
+  const box = word.bbox;
+  printedBoundingBox.style.left = (box.left / width * 100) + '%';
+  printedBoundingBox.style.top = (box.top / height * 100) + '%';
+  printedBoundingBox.style.width = (box.width / width * 100) + '%';
+  printedBoundingBox.style.height = (box.height / height * 100) + '%';
+  printedImageOverlay.hidden = false;
+}
 const printedTextControls = document.getElementById('printedTextControls');
 const printedReviewNotice = document.getElementById('printedReviewNotice');
 const printedEvidencePanel = document.getElementById('printedEvidencePanel');
@@ -149,12 +206,30 @@ function renderPrintedEvidence(pages) {
   printedEvidenceList.replaceChildren();
   const suspicious = (pages ?? []).flatMap(page => (
     page.spatialEvidence?.lowConfidenceWords ?? []
-  ).map(word => ({ ...word, pageNumber: page.pageNumber })));
+  ).map(word => ({
+    ...word,
+    pageNumber: page.pageNumber,
+    canLocateOnSource: Math.abs(page.detectedAngle ?? 0) < 0.5,
+  })));
   printedEvidencePanel.hidden = suspicious.length === 0;
   printedEvidencePanel.open = false;
   for (const word of suspicious.slice(0, 80)) {
     const entry = document.createElement('li');
     entry.textContent = `Página ${word.pageNumber} · ${word.text} · ${word.confidence.toFixed(1)}% · (${word.bbox.left}, ${word.bbox.top})`;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'secondary';
+    button.textContent = entry.textContent;
+    if (word.canLocateOnSource) {
+      button.addEventListener('click', () => {
+        selectPrintedWord(word);
+        void reviewPrintedWord(word);
+      });
+    } else {
+      button.disabled = true;
+      button.title = 'La imagen OCR fue rotada; estas coordenadas corresponden a la imagen procesada.';
+    }
+    entry.replaceChildren(button);
     printedEvidenceList.append(entry);
   }
   if (suspicious.length > 80) {
@@ -169,14 +244,18 @@ const rawTextButton = document.getElementById('rawTextButton');
 function showPrintedText(view) {
   printedTextState.current = view;
   result.textContent = view === 'readable'
-    ? printedTextState.readable : printedTextState.raw;
+    ? printedTextState.readable : view === 'structured'
+      ? printedTextState.structured : printedTextState.raw;
   readableTextButton.setAttribute('aria-pressed', String(view === 'readable'));
   rawTextButton.setAttribute('aria-pressed', String(view === 'raw'));
+  geometricTextButton.setAttribute('aria-pressed', String(view === 'structured'));
   readableTextButton.classList.toggle('secondary', view !== 'readable');
   rawTextButton.classList.toggle('secondary', view !== 'raw');
+  geometricTextButton.classList.toggle('secondary', view !== 'structured');
 }
 readableTextButton.addEventListener('click', () => showPrintedText('readable'));
 rawTextButton.addEventListener('click', () => showPrintedText('raw'));
+geometricTextButton.addEventListener('click', () => showPrintedText('structured'));
 
 
 function setStatus(
@@ -212,6 +291,8 @@ for (
       printedTextControls.hidden = true;
       printedReviewNotice.hidden = true;
       printedEvidencePanel.hidden = true;
+      lastPrintedFile = null;
+      revokePrintedImagePreview();
 
       metadataResult.textContent =
         '';
@@ -602,6 +683,8 @@ async function submitOcr(
   printedTextControls.hidden = true;
   printedReviewNotice.hidden = true;
   printedEvidencePanel.hidden = true;
+  lastPrintedFile = null;
+  revokePrintedImagePreview();
 
   metadataResult.textContent =
     '';
@@ -655,20 +738,27 @@ async function submitOcr(
       : 'Texto impreso';
 
   if (payload.ocr.mode === 'printed') {
+    if (payload.document.kind !== 'pdf') {
+      lastPrintedFile = file;
+      printedImagePreviewUrl = URL.createObjectURL(file);
+      printedImagePreview.src = printedImagePreviewUrl;
+    }
     printedTextState = {
       raw: payload.ocr.text,
       readable: payload.ocr.readableText ?? payload.ocr.text,
+      structured: payload.ocr.structuredText ?? payload.ocr.readableText ?? payload.ocr.text,
       current: 'readable',
     };
     printedTextControls.hidden = false;
     printedReviewNotice.hidden = false;
-    showPrintedText('readable');
+    showPrintedText(payload.document.kind === 'pdf' ? 'readable' : 'structured');
     renderPrintedEvidence(payload.ocr.pages);
   } else {
     result.textContent = payload.ocr.text;
     printedTextControls.hidden = true;
     printedReviewNotice.hidden = true;
     printedEvidencePanel.hidden = true;
+    revokePrintedImagePreview();
   }
 
   metadataResult.textContent = [
@@ -944,6 +1034,7 @@ closeButton.addEventListener(
 window.addEventListener(
   'pagehide',
   () => {
+    revokePrintedImagePreview();
     stopMediaStream(
       mediaStream,
     );

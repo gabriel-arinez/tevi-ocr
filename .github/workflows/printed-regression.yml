@@ -20,3 +20,5 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run benchmark:final
+      - run: ./node_modules/.bin/tsx scripts/inspect-geometry-regression.ts
+      - run: python3 -m py_compile experiments/ppstructure_v3_compare.py
