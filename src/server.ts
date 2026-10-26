@@ -49,6 +49,8 @@ import { prepareRegionForSecondReading } from './ocr/printed-region-review.js';
 import type { PrintedSpatialWord } from './ocr/printed-spatial-evidence.js';
 
 const app = express();
+let regionalReviewsInFlight = 0;
+const MAX_CONCURRENT_REGION_REVIEWS = 2;
 
 app.disable('x-powered-by');
 
@@ -577,6 +579,11 @@ app.post(
   '/api/ocr/region-review',
   upload.single('file'),
   async (request, response) => {
+    if (regionalReviewsInFlight >= MAX_CONCURRENT_REGION_REVIEWS) {
+      response.status(429).json({ ok: false, error: 'REGION_REVIEW_BUSY' });
+      return;
+    }
+    regionalReviewsInFlight += 1;
     try {
       if (!request.file) {
         response.status(400).json({ ok: false, error: 'FILE_REQUIRED' });
@@ -625,6 +632,8 @@ app.post(
       }
       console.error('Printed region review error:', error);
       response.status(500).json({ ok: false, error: 'REGION_REVIEW_ERROR' });
+    } finally {
+      regionalReviewsInFlight -= 1;
     }
   },
 );
