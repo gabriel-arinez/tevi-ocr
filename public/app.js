@@ -142,6 +142,39 @@ let capturedBlob = null;
 let previewUrl = null;
 let printedTextState = { raw: '', readable: '', structured: '', current: 'readable' };
 let printedImagePreviewUrl = null;
+let lastPrintedFile = null;
+const regionalReviewResult = document.getElementById('regionalReviewResult');
+
+async function reviewPrintedWord(word) {
+  if (!lastPrintedFile || !word.canLocateOnSource) return;
+  regionalReviewResult.textContent = 'Comparando la lectura de esta región...';
+  const form = new FormData();
+  form.append('file', lastPrintedFile, lastPrintedFile.name);
+  for (const key of ['left', 'top', 'width', 'height']) {
+    form.append(key, String(word.bbox[key]));
+  }
+  try {
+    const response = await fetch('/api/ocr/region-review', {
+      method: 'POST',
+      body: form,
+    });
+    const data = await response.json();
+    if (!response.ok || !data.ok) {
+      throw new Error('No se pudo verificar la región.');
+    }
+    const alternatives = data.alternatives.map(candidate =>
+      `${candidate.type}: "${candidate.text.trim()}" (${candidate.confidence === null ? 'N/D' : candidate.confidence.toFixed(1) + '%'})`
+    );
+    regionalReviewResult.textContent = [
+      `OCR inicial: "${word.text}" (${word.confidence.toFixed(1)}%)`,
+      ...alternatives,
+      'Estas opciones no se aplican automáticamente; compare con la imagen.',
+    ].join('\n');
+  } catch (error) {
+    regionalReviewResult.textContent = error instanceof Error
+      ? error.message : 'No se pudo verificar la región.';
+  }
+}
 const geometricTextButton = document.getElementById('geometricTextButton');
 const printedImageOverlay = document.getElementById('printedImageOverlay');
 const printedImagePreview = document.getElementById('printedImagePreview');
@@ -151,6 +184,7 @@ function revokePrintedImagePreview() {
   printedImagePreviewUrl = null;
   printedImagePreview.removeAttribute('src');
   printedImageOverlay.hidden = true;
+  regionalReviewResult.textContent = '';
 }
 function selectPrintedWord(word) {
   if (!printedImagePreviewUrl) return;
@@ -187,7 +221,10 @@ function renderPrintedEvidence(pages) {
     button.className = 'secondary';
     button.textContent = entry.textContent;
     if (word.canLocateOnSource) {
-      button.addEventListener('click', () => selectPrintedWord(word));
+      button.addEventListener('click', () => {
+        selectPrintedWord(word);
+        void reviewPrintedWord(word);
+      });
     } else {
       button.disabled = true;
       button.title = 'La imagen OCR fue rotada; estas coordenadas corresponden a la imagen procesada.';
@@ -254,6 +291,7 @@ for (
       printedTextControls.hidden = true;
       printedReviewNotice.hidden = true;
       printedEvidencePanel.hidden = true;
+      lastPrintedFile = null;
       revokePrintedImagePreview();
 
       metadataResult.textContent =
@@ -645,6 +683,7 @@ async function submitOcr(
   printedTextControls.hidden = true;
   printedReviewNotice.hidden = true;
   printedEvidencePanel.hidden = true;
+  lastPrintedFile = null;
   revokePrintedImagePreview();
 
   metadataResult.textContent =
@@ -700,6 +739,7 @@ async function submitOcr(
 
   if (payload.ocr.mode === 'printed') {
     if (payload.document.kind !== 'pdf') {
+      lastPrintedFile = file;
       printedImagePreviewUrl = URL.createObjectURL(file);
       printedImagePreview.src = printedImagePreviewUrl;
     }
@@ -711,7 +751,7 @@ async function submitOcr(
     };
     printedTextControls.hidden = false;
     printedReviewNotice.hidden = false;
-    showPrintedText('readable');
+    showPrintedText(payload.document.kind === 'pdf' ? 'readable' : 'structured');
     renderPrintedEvidence(payload.ocr.pages);
   } else {
     result.textContent = payload.ocr.text;
