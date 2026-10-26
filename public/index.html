@@ -163,6 +163,11 @@
     <section class="card">
       <h2>Resultado OCR</h2>
 
+      <div id="printedTextControls" class="actions" hidden>
+        <button id="readableTextButton" type="button" aria-pressed="true">Texto legible</button>
+        <button id="rawTextButton" type="button" class="secondary" aria-pressed="false">Transcripción original</button>
+      </div>
+      <p id="printedReviewNotice" class="ocr-note" hidden>Texto reorganizado para lectura. Verifique las palabras dudosas comparándolas con el documento original.</p>
       <pre
         id="ocrResult"
         class="result"
