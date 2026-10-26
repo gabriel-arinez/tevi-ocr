@@ -21,7 +21,7 @@ export function reconstructPrintedParagraphs(raw: string): string {
       current.push(trimmed);
     }
     flush();
-    return groups.map(group => group.join(' ').replace(/([\p{L}])[-¬]\s+(?=[\p{Ll}])/gu, '$1')).join('\n\n');
+    return groups.map(group => group.join(' ')).join('\n\n');
   }).filter(page => page.trim()).join('\n\n\f\n\n');
 }
 
