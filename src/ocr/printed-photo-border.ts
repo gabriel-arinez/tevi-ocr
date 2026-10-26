@@ -33,10 +33,10 @@ export function preferBorderCropCandidate(
 export async function createUpperBorderCropCandidate(
   input: Buffer,
 ): Promise<Buffer | null> {
-  const image = sharp(input).rotate();
-  const meta = await image.metadata();
-  const width = meta.autoOrient?.width ?? meta.width ?? 0;
-  const height = meta.autoOrient?.height ?? meta.height ?? 0;
+  const oriented = await sharp(input).rotate().png().toBuffer();
+  const meta = await sharp(oriented).metadata();
+  const width = meta.width ?? 0;
+  const height = meta.height ?? 0;
 
   if (width < 300 || height < 400) {
     return null;
@@ -47,7 +47,7 @@ export async function createUpperBorderCropCandidate(
     return null;
   }
 
-  return image
+  return sharp(oriented)
     .extract({
       left: 0,
       top: removeRows,
