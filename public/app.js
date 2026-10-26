@@ -172,7 +172,11 @@ function renderPrintedEvidence(pages) {
   printedEvidenceList.replaceChildren();
   const suspicious = (pages ?? []).flatMap(page => (
     page.spatialEvidence?.lowConfidenceWords ?? []
-  ).map(word => ({ ...word, pageNumber: page.pageNumber })));
+  ).map(word => ({
+    ...word,
+    pageNumber: page.pageNumber,
+    canLocateOnSource: Math.abs(page.detectedAngle ?? 0) < 0.5,
+  })));
   printedEvidencePanel.hidden = suspicious.length === 0;
   printedEvidencePanel.open = false;
   for (const word of suspicious.slice(0, 80)) {
@@ -182,7 +186,12 @@ function renderPrintedEvidence(pages) {
     button.type = 'button';
     button.className = 'secondary';
     button.textContent = entry.textContent;
-    button.addEventListener('click', () => selectPrintedWord(word));
+    if (word.canLocateOnSource) {
+      button.addEventListener('click', () => selectPrintedWord(word));
+    } else {
+      button.disabled = true;
+      button.title = 'La imagen OCR fue rotada; estas coordenadas corresponden a la imagen procesada.';
+    }
     entry.replaceChildren(button);
     printedEvidenceList.append(entry);
   }
