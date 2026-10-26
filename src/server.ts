@@ -43,6 +43,8 @@ import {
   preferOriginalPrintedRecognition,
 } from './ocr/printed-deskew-safety.js';
 
+import { buildPrintedTextView } from './ocr/printed-document-layout.js';
+
 const app = express();
 
 app.disable('x-powered-by');
@@ -432,6 +434,7 @@ app.post(
               )
               .join('\n\n'),
 
+          readableText: buildPrintedTextView(pageResults.map(page => page.text).join('\n\n')).readable,
           confidence,
           quality,
           durationMs,

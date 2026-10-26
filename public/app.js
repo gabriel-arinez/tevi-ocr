@@ -140,6 +140,44 @@ const closeButton =
 let mediaStream = null;
 let capturedBlob = null;
 let previewUrl = null;
+let printedTextState = { raw: '', readable: '', current: 'readable' };
+const printedTextControls = document.getElementById('printedTextControls');
+const printedReviewNotice = document.getElementById('printedReviewNotice');
+const printedEvidencePanel = document.getElementById('printedEvidencePanel');
+const printedEvidenceList = document.getElementById('printedEvidenceList');
+function renderPrintedEvidence(pages) {
+  printedEvidenceList.replaceChildren();
+  const suspicious = (pages ?? []).flatMap(page => (
+    page.spatialEvidence?.lowConfidenceWords ?? []
+  ).map(word => ({ ...word, pageNumber: page.pageNumber })));
+  printedEvidencePanel.hidden = suspicious.length === 0;
+  printedEvidencePanel.open = false;
+  for (const word of suspicious.slice(0, 80)) {
+    const entry = document.createElement('li');
+    entry.textContent = `Página ${word.pageNumber} · ${word.text} · ${word.confidence.toFixed(1)}% · (${word.bbox.left}, ${word.bbox.top})`;
+    printedEvidenceList.append(entry);
+  }
+  if (suspicious.length > 80) {
+    const more = document.createElement('li');
+    more.textContent = `Hay ${suspicious.length - 80} detecciones adicionales. Consulte el JSON de evidencia.`;
+    printedEvidenceList.append(more);
+  }
+}
+const readableTextButton = document.getElementById('readableTextButton');
+const rawTextButton = document.getElementById('rawTextButton');
+
+function showPrintedText(view) {
+  printedTextState.current = view;
+  result.textContent = view === 'readable'
+    ? printedTextState.readable : printedTextState.raw;
+  readableTextButton.setAttribute('aria-pressed', String(view === 'readable'));
+  rawTextButton.setAttribute('aria-pressed', String(view === 'raw'));
+  readableTextButton.classList.toggle('secondary', view !== 'readable');
+  rawTextButton.classList.toggle('secondary', view !== 'raw');
+}
+readableTextButton.addEventListener('click', () => showPrintedText('readable'));
+rawTextButton.addEventListener('click', () => showPrintedText('raw'));
+
 
 function setStatus(
   message,
@@ -171,6 +209,9 @@ for (
 
       result.textContent =
         '';
+      printedTextControls.hidden = true;
+      printedReviewNotice.hidden = true;
+      printedEvidencePanel.hidden = true;
 
       metadataResult.textContent =
         '';
@@ -558,6 +599,9 @@ async function submitOcr(
   );
 
   result.textContent = '';
+  printedTextControls.hidden = true;
+  printedReviewNotice.hidden = true;
+  printedEvidencePanel.hidden = true;
 
   metadataResult.textContent =
     '';
@@ -610,8 +654,22 @@ async function submitOcr(
       ? 'Manuscrito'
       : 'Texto impreso';
 
-  result.textContent =
-    payload.ocr.text;
+  if (payload.ocr.mode === 'printed') {
+    printedTextState = {
+      raw: payload.ocr.text,
+      readable: payload.ocr.readableText ?? payload.ocr.text,
+      current: 'readable',
+    };
+    printedTextControls.hidden = false;
+    printedReviewNotice.hidden = false;
+    showPrintedText('readable');
+    renderPrintedEvidence(payload.ocr.pages);
+  } else {
+    result.textContent = payload.ocr.text;
+    printedTextControls.hidden = true;
+    printedReviewNotice.hidden = true;
+    printedEvidencePanel.hidden = true;
+  }
 
   metadataResult.textContent = [
     `Origen: ${payload.document.source}`,
