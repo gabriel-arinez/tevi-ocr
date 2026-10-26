@@ -140,6 +140,24 @@ const closeButton =
 let mediaStream = null;
 let capturedBlob = null;
 let previewUrl = null;
+let printedTextState = { raw: '', readable: '', current: 'readable' };
+const printedTextControls = document.getElementById('printedTextControls');
+const printedReviewNotice = document.getElementById('printedReviewNotice');
+const readableTextButton = document.getElementById('readableTextButton');
+const rawTextButton = document.getElementById('rawTextButton');
+
+function showPrintedText(view) {
+  printedTextState.current = view;
+  result.textContent = view === 'readable'
+    ? printedTextState.readable : printedTextState.raw;
+  readableTextButton.setAttribute('aria-pressed', String(view === 'readable'));
+  rawTextButton.setAttribute('aria-pressed', String(view === 'raw'));
+  readableTextButton.classList.toggle('secondary', view !== 'readable');
+  rawTextButton.classList.toggle('secondary', view !== 'raw');
+}
+readableTextButton.addEventListener('click', () => showPrintedText('readable'));
+rawTextButton.addEventListener('click', () => showPrintedText('raw'));
+
 
 function setStatus(
   message,
@@ -171,6 +189,8 @@ for (
 
       result.textContent =
         '';
+      printedTextControls.hidden = true;
+      printedReviewNotice.hidden = true;
 
       metadataResult.textContent =
         '';
@@ -558,6 +578,8 @@ async function submitOcr(
   );
 
   result.textContent = '';
+  printedTextControls.hidden = true;
+  printedReviewNotice.hidden = true;
 
   metadataResult.textContent =
     '';
@@ -610,8 +632,20 @@ async function submitOcr(
       ? 'Manuscrito'
       : 'Texto impreso';
 
-  result.textContent =
-    payload.ocr.text;
+  if (payload.ocr.mode === 'printed') {
+    printedTextState = {
+      raw: payload.ocr.text,
+      readable: payload.ocr.readableText ?? payload.ocr.text,
+      current: 'readable',
+    };
+    printedTextControls.hidden = false;
+    printedReviewNotice.hidden = false;
+    showPrintedText('readable');
+  } else {
+    result.textContent = payload.ocr.text;
+    printedTextControls.hidden = true;
+    printedReviewNotice.hidden = true;
+  }
 
   metadataResult.textContent = [
     `Origen: ${payload.document.source}`,
