@@ -765,3 +765,11 @@ button.secondary {
       1fr;
   }
 }
+
+/* Readable OCR and inspectable, non-destructive evidence */
+#printedTextControls { margin: 0.75rem 0; }
+#printedTextControls[hidden], #printedEvidencePanel[hidden],
+#printedReviewNotice[hidden] { display: none; }
+.ocr-note { color: #596475; font-size: 0.875rem; line-height: 1.5; }
+.ocr-evidence-list { max-height: 14rem; overflow-y: auto; padding-left: 1.25rem; }
+.ocr-evidence-list li { margin: 0.25rem 0; overflow-wrap: anywhere; }
