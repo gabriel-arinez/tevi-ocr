@@ -43,6 +43,11 @@ import {
   preferOriginalPrintedRecognition,
 } from './ocr/printed-deskew-safety.js';
 
+import {
+  createUpperBorderCropCandidate,
+  preferBorderCropCandidate,
+} from './ocr/printed-photo-border.js';
+
 const app = express();
 
 app.disable('x-powered-by');
@@ -292,6 +297,41 @@ app.post(
           ) {
             result = originalCandidate;
             selectedAngle = 0;
+          }
+        }
+
+        // Only test upper-border removal when a JPEG photographic
+        // document has already produced a suspect deskew reading.
+        // Select the crop only with independent OCR evidence and
+        // adequate text retention: headings must not be lost.
+        if (
+          documentInput.kind === 'jpeg' &&
+          shouldVerifyPrintedDeskew(
+            documentInput.kind,
+            page.detectedAngle,
+          )
+        ) {
+          const crop =
+            await createUpperBorderCropCandidate(
+              documentInput.buffer,
+            );
+
+          if (crop !== null) {
+            const croppedCandidate =
+              await engine.recognize(crop);
+
+            recognitionDurationMs +=
+              croppedCandidate.durationMs;
+
+            if (
+              preferBorderCropCandidate(
+                result,
+                croppedCandidate,
+              )
+            ) {
+              result = croppedCandidate;
+              selectedAngle = 0;
+            }
           }
         }
 
