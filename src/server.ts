@@ -257,6 +257,11 @@ app.post(
         let result =
           await engine.recognize(
             page.buffer,
+            {
+              includeSpatialEvidence:
+                documentInput.kind === 'jpeg' ||
+                documentInput.kind === 'png',
+            },
           );
 
         // El detector de inclinación puede elegir el extremo (+/-10°)
@@ -279,6 +284,7 @@ app.post(
           const originalCandidate =
             await engine.recognize(
               documentInput.buffer,
+              { includeSpatialEvidence: true },
             );
 
           recognitionDurationMs +=
@@ -318,6 +324,10 @@ app.post(
 
           detectedAngle:
             selectedAngle,
+
+          ...(result.spatialEvidence
+            ? { spatialEvidence: result.spatialEvidence }
+            : {}),
 
           preprocessingDurationMs:
             page.preprocessingDurationMs,
