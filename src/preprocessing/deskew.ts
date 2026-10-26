@@ -229,6 +229,36 @@ export async function deskewImage(
       input,
     );
 
+  // Check suspicious boundary optima against an independent
+  // high-frequency (horizontal stroke) representation. This uses
+  // the complete image: no fixed crop and no text is discarded.
+  if (Math.abs(analysis.angle) >= 9.5) {
+    const edgeImage = await sharp(input)
+      .grayscale()
+      .convolve({
+        width: 3,
+        height: 3,
+        kernel: [-1, -2, -1, 0, 0, 0, 1, 2, 1],
+        scale: 1,
+        offset: 128,
+      })
+      .linear(2, -256)
+      .negate()
+      .png()
+      .toBuffer();
+
+    const edgeAngle = await detectSkewAngle(edgeImage);
+
+    // Contradictory estimates are not enough to justify rotation.
+    // This is a conservative rejection, not an invented replacement.
+    if (Math.abs(edgeAngle.angle - analysis.angle) > 2) {
+      return {
+        buffer: input,
+        detectedAngle: 0,
+      };
+    }
+  }
+
   if (
     Math.abs(
       analysis.angle,
