@@ -69,6 +69,17 @@ export function summarizePrintedSpatialEvidence(words: readonly PrintedSpatialWo
   const suspicious = words.filter(word => word.confidence >= 0 && word.confidence < 50);
   return {
     wordCount: words.length,
+    // Full, read-only evidence is necessary for verifying reading order
+    // and separating actual page text from photographic background.
+    words: words.map(word => ({
+      text: word.text,
+      confidence: word.confidence,
+      bbox: word.bbox,
+      page: word.page,
+      block: word.block,
+      paragraph: word.paragraph,
+      line: word.line,
+    })),
     lowConfidenceWordCount: suspicious.length,
     lowConfidenceWords: suspicious.map(word => ({
       text: word.text,
