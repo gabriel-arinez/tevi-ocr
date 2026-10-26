@@ -18,6 +18,6 @@ test('TSV: extrae palabras con caja y confianza sin borrar texto', () => {
 });
 
 test('TSV: falla cerradamente ante formato inválido', () => {
-  assert.deepEqual(parsePrintedTsv('no es TSV'), []);
+  assert.throws(() => parsePrintedTsv('no es TSV'), /TSV/);
   assert.deepEqual(parsePrintedTsv(''), []);
 });
