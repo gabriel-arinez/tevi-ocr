@@ -60,3 +60,20 @@ test('physical lines split a whole-page TSV paragraph into title, body and field
     'Carrera: Sistemas',
   ]);
 });
+
+test('a time in the middle of a paragraph does not create a false field boundary', () => {
+  const tokens = [
+    word('El', 20, 10, 1, 1, 1),
+    word('horario', 60, 10, 1, 1, 1),
+    word('es', 135, 10, 1, 1, 1),
+    word('08:30', 170, 10, 1, 1, 1),
+    word('a', 260, 10, 1, 1, 1),
+    word('13:30,', 290, 10, 1, 1, 1),
+    word('durante', 20, 32, 1, 1, 2),
+    word('la', 120, 32, 1, 1, 2),
+    word('mañana.', 150, 32, 1, 1, 2),
+  ];
+  const result = buildGeometricReadingView(tokens);
+  assert.equal(result.blocks.length, 1);
+  assert.equal(result.text, 'El horario es 08:30 a 13:30, durante la mañana.');
+});
