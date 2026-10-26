@@ -12,25 +12,49 @@ export interface PrintedSpatialWord {
   line: number;
 }
 
+const TSV_COLUMNS = [
+  'level', 'page_num', 'block_num', 'par_num', 'line_num', 'word_num',
+  'left', 'top', 'width', 'height', 'conf', 'text',
+] as const;
+
 export function parsePrintedTsv(tsv: string): PrintedSpatialWord[] {
-  const rows = tsv.trim().split(/\r?\n/);
-  if (rows.length < 2) return [];
-  const header = rows[0]!.split('\t');
-  const keys = ['level', 'left', 'top', 'width', 'height', 'conf', 'text', 'block_num', 'par_num', 'line_num'];
-  if (keys.some(key => !header.includes(key))) return [];
+  if (!tsv.trim()) return [];
+
+  const rows = tsv.trimEnd().split(/\r?\n/);
+  const first = rows[0]!.split('\t');
+  const hasHeader = first[0] === 'level';
+  const header = hasHeader ? first : [...TSV_COLUMNS];
+
+  if (TSV_COLUMNS.some(key => !header.includes(key))) {
+    throw new Error('Formato TSV Tesseract desconocido: faltan columnas.');
+  }
+  if (!hasHeader && first.length < TSV_COLUMNS.length) {
+    throw new Error('Formato TSV Tesseract desconocido: faltan valores.');
+  }
+
   const index = Object.fromEntries(header.map((key, i) => [key, i]));
   const cell = (parts: string[], key: string) => parts[index[key]!] ?? '';
   const words: PrintedSpatialWord[] = [];
-  for (const row of rows.slice(1)) {
+
+  for (const row of rows.slice(hasHeader ? 1 : 0)) {
+    if (!row.trim()) continue;
     const parts = row.split('\t');
+    if (parts.length < header.length) {
+      throw new Error('Registro TSV Tesseract incompleto.');
+    }
     if (cell(parts, 'level') !== '5') continue;
     const text = parts.slice(index.text!).join('\t').trim();
     if (!text) continue;
-    const nums = ['left', 'top', 'width', 'height', 'conf', 'block_num', 'par_num', 'line_num']
-      .map(key => Number(cell(parts, key)));
-    if (nums.some(value => !Number.isFinite(value))) continue;
+
+    const keys = ['left', 'top', 'width', 'height', 'conf', 'block_num', 'par_num', 'line_num'];
+    const nums = keys.map(key => Number(cell(parts, key)));
+    if (nums.some(value => !Number.isFinite(value))) {
+      throw new Error('Coordenadas o confianza TSV inválidas.');
+    }
     const [left, top, width, height, confidence, block, paragraph, line] = nums as number[];
-    if (left! < 0 || top! < 0 || width! <= 0 || height! <= 0) continue;
+    if (left! < 0 || top! < 0 || width! <= 0 || height! <= 0) {
+      throw new Error('Caja TSV inválida.');
+    }
     words.push({
       text, confidence: confidence!,
       bbox: { left: left!, top: top!, width: width!, height: height! },
