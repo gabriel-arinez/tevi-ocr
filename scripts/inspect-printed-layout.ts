@@ -10,7 +10,7 @@ async function main() {
   const out = process.argv[3] ?? path.join(os.homedir(), 'Descargas', 'tevi-ocr-inspeccion');
   await fs.mkdir(out, { recursive: true });
 
-  const input = await fs.readFile(imagePath);
+  const input = await sharp(await fs.readFile(imagePath)).rotate().png().toBuffer();
   const engine = new TesseractOcrEngine();
   const result = await engine.recognize(input, { includeSpatialEvidence: true });
   const view = buildPrintedTextView(result.text);
@@ -24,8 +24,8 @@ async function main() {
   }, null, 2));
 
   const meta = await sharp(input).metadata();
-  const width = meta.autoOrient?.width ?? meta.width;
-  const height = meta.autoOrient?.height ?? meta.height;
+  const width = meta.width;
+  const height = meta.height;
   if (!width || !height) throw new Error('Dimensiones de imagen inválidas');
 
   const safe = (value: string) => value.replace(/&/g, '&amp;')
