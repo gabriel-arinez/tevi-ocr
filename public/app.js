@@ -140,7 +140,30 @@ const closeButton =
 let mediaStream = null;
 let capturedBlob = null;
 let previewUrl = null;
-let printedTextState = { raw: '', readable: '', current: 'readable' };
+let printedTextState = { raw: '', readable: '', structured: '', current: 'readable' };
+let printedImagePreviewUrl = null;
+const geometricTextButton = document.getElementById('geometricTextButton');
+const printedImageOverlay = document.getElementById('printedImageOverlay');
+const printedImagePreview = document.getElementById('printedImagePreview');
+const printedBoundingBox = document.getElementById('printedBoundingBox');
+function revokePrintedImagePreview() {
+  if (printedImagePreviewUrl) URL.revokeObjectURL(printedImagePreviewUrl);
+  printedImagePreviewUrl = null;
+  printedImagePreview.removeAttribute('src');
+  printedImageOverlay.hidden = true;
+}
+function selectPrintedWord(word) {
+  if (!printedImagePreviewUrl) return;
+  const width = printedImagePreview.naturalWidth;
+  const height = printedImagePreview.naturalHeight;
+  if (!width || !height) return;
+  const box = word.bbox;
+  printedBoundingBox.style.left = (box.left / width * 100) + '%';
+  printedBoundingBox.style.top = (box.top / height * 100) + '%';
+  printedBoundingBox.style.width = (box.width / width * 100) + '%';
+  printedBoundingBox.style.height = (box.height / height * 100) + '%';
+  printedImageOverlay.hidden = false;
+}
 const printedTextControls = document.getElementById('printedTextControls');
 const printedReviewNotice = document.getElementById('printedReviewNotice');
 const printedEvidencePanel = document.getElementById('printedEvidencePanel');
@@ -155,6 +178,12 @@ function renderPrintedEvidence(pages) {
   for (const word of suspicious.slice(0, 80)) {
     const entry = document.createElement('li');
     entry.textContent = `Página ${word.pageNumber} · ${word.text} · ${word.confidence.toFixed(1)}% · (${word.bbox.left}, ${word.bbox.top})`;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'secondary';
+    button.textContent = entry.textContent;
+    button.addEventListener('click', () => selectPrintedWord(word));
+    entry.replaceChildren(button);
     printedEvidenceList.append(entry);
   }
   if (suspicious.length > 80) {
@@ -169,14 +198,18 @@ const rawTextButton = document.getElementById('rawTextButton');
 function showPrintedText(view) {
   printedTextState.current = view;
   result.textContent = view === 'readable'
-    ? printedTextState.readable : printedTextState.raw;
+    ? printedTextState.readable : view === 'structured'
+      ? printedTextState.structured : printedTextState.raw;
   readableTextButton.setAttribute('aria-pressed', String(view === 'readable'));
   rawTextButton.setAttribute('aria-pressed', String(view === 'raw'));
+  geometricTextButton.setAttribute('aria-pressed', String(view === 'structured'));
   readableTextButton.classList.toggle('secondary', view !== 'readable');
   rawTextButton.classList.toggle('secondary', view !== 'raw');
+  geometricTextButton.classList.toggle('secondary', view !== 'structured');
 }
 readableTextButton.addEventListener('click', () => showPrintedText('readable'));
 rawTextButton.addEventListener('click', () => showPrintedText('raw'));
+geometricTextButton.addEventListener('click', () => showPrintedText('structured'));
 
 
 function setStatus(
@@ -212,6 +245,7 @@ for (
       printedTextControls.hidden = true;
       printedReviewNotice.hidden = true;
       printedEvidencePanel.hidden = true;
+      revokePrintedImagePreview();
 
       metadataResult.textContent =
         '';
@@ -602,6 +636,7 @@ async function submitOcr(
   printedTextControls.hidden = true;
   printedReviewNotice.hidden = true;
   printedEvidencePanel.hidden = true;
+  revokePrintedImagePreview();
 
   metadataResult.textContent =
     '';
@@ -655,9 +690,14 @@ async function submitOcr(
       : 'Texto impreso';
 
   if (payload.ocr.mode === 'printed') {
+    if (payload.document.kind !== 'pdf') {
+      printedImagePreviewUrl = URL.createObjectURL(file);
+      printedImagePreview.src = printedImagePreviewUrl;
+    }
     printedTextState = {
       raw: payload.ocr.text,
       readable: payload.ocr.readableText ?? payload.ocr.text,
+      structured: payload.ocr.structuredText ?? payload.ocr.readableText ?? payload.ocr.text,
       current: 'readable',
     };
     printedTextControls.hidden = false;
@@ -669,6 +709,7 @@ async function submitOcr(
     printedTextControls.hidden = true;
     printedReviewNotice.hidden = true;
     printedEvidencePanel.hidden = true;
+    revokePrintedImagePreview();
   }
 
   metadataResult.textContent = [
@@ -944,6 +985,7 @@ closeButton.addEventListener(
 window.addEventListener(
   'pagehide',
   () => {
+    revokePrintedImagePreview();
     stopMediaStream(
       mediaStream,
     );
