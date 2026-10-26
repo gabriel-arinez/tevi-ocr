@@ -45,6 +45,8 @@ import {
 
 import { buildPrintedTextView } from './ocr/printed-document-layout.js';
 import { buildGeometricReadingView } from './ocr/printed-geometric-layout.js';
+import { prepareRegionForSecondReading } from './ocr/printed-region-review.js';
+import type { PrintedSpatialWord } from './ocr/printed-spatial-evidence.js';
 
 const app = express();
 
@@ -562,6 +564,67 @@ app.post(
           message:
             'No fue posible procesar el documento.',
         });
+    }
+  },
+);
+
+/**
+ * On-demand second reading of a selected box. This endpoint never writes,
+ * deletes or replaces any source OCR text. Image coordinates refer to the
+ * EXIF-oriented original image, not a deskew-rotated candidate.
+ */
+app.post(
+  '/api/ocr/region-review',
+  upload.single('file'),
+  async (request, response) => {
+    try {
+      if (!request.file) {
+        response.status(400).json({ ok: false, error: 'FILE_REQUIRED' });
+        return;
+      }
+      const input = createDocumentInput(request.file, 'file');
+      if (input.kind === 'pdf') {
+        response.status(400).json({ ok: false, error: 'IMAGE_REQUIRED' });
+        return;
+      }
+      const box = {
+        left: Number(request.body?.left),
+        top: Number(request.body?.top),
+        width: Number(request.body?.width),
+        height: Number(request.body?.height),
+      };
+      if (![box.left, box.top, box.width, box.height].every(Number.isFinite) ||
+          box.left < 0 || box.top < 0 || box.width < 1 || box.height < 1) {
+        response.status(400).json({ ok: false, error: 'INVALID_REGION' });
+        return;
+      }
+      const word: PrintedSpatialWord = {
+        page: 1, block: 0, paragraph: 0, line: 0,
+        text: '', confidence: 0, bbox: box,
+      };
+      const crop = await prepareRegionForSecondReading(input.buffer, word);
+      if (!crop || crop.region.width * crop.region.height > 2_000_000) {
+        response.status(400).json({ ok: false, error: 'INVALID_REGION' });
+        return;
+      }
+      const engine = new TesseractOcrEngine();
+      const original = await engine.recognize(crop.original);
+      const normalized = await engine.recognize(crop.contrast);
+      response.json({
+        ok: true, originalTextUntouched: true, region: crop.region,
+        alternatives: [
+          { type: 'regional-original', text: original.text, confidence: original.confidence },
+          { type: 'regional-normalized', text: normalized.text, confidence: normalized.confidence },
+        ],
+        requiresReview: true,
+      });
+    } catch (error) {
+      if (error instanceof InvalidDocumentError) {
+        response.status(400).json({ ok: false, error: 'INVALID_DOCUMENT' });
+        return;
+      }
+      console.error('Printed region review error:', error);
+      response.status(500).json({ ok: false, error: 'REGION_REVIEW_ERROR' });
     }
   },
 );
