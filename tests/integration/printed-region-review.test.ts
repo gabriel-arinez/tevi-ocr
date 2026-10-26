@@ -1,11 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import sharp from 'sharp';
+import { once } from 'node:events';
 import { app } from '../../src/server.js';
 
 test('region review refuses missing document and invalid bounding boxes', async () => {
   const server = app.listen(0, '127.0.0.1');
   try {
+    await once(server, 'listening');
     const addr = server.address();
     assert.ok(addr && typeof addr !== 'string');
     const url = `http://127.0.0.1:${addr.port}/api/ocr/region-review`;
