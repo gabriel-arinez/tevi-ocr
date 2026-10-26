@@ -6,12 +6,18 @@ import {
   OEM,
 } from 'tesseract.js';
 
+import {
+  parsePrintedTsv,
+  summarizePrintedSpatialEvidence,
+} from './printed-spatial-evidence.js';
+
 const require = createRequire(__filename);
 
 export interface OcrRecognitionResult {
   text: string;
   confidence: number | null;
   durationMs: number;
+  spatialEvidence?: ReturnType<typeof summarizePrintedSpatialEvidence>;
 }
 
 function resolveSpanishLangPath(): string {
@@ -27,6 +33,7 @@ function resolveSpanishLangPath(): string {
 export class TesseractOcrEngine {
   async recognize(
     input: Buffer | string,
+    options: { includeSpatialEvidence?: boolean } = {},
   ): Promise<OcrRecognitionResult> {
     const worker = await createWorker(
       'spa',
@@ -44,7 +51,11 @@ export class TesseractOcrEngine {
         process.hrtime.bigint();
 
       const result =
-        await worker.recognize(input);
+        await worker.recognize(
+          input,
+          {},
+          options.includeSpatialEvidence ? { tsv: true } : { text: true },
+        );
 
       const finishedAt =
         process.hrtime.bigint();
@@ -62,6 +73,11 @@ export class TesseractOcrEngine {
         text: result.data.text ?? '',
         confidence,
         durationMs,
+        ...(options.includeSpatialEvidence ? {
+          spatialEvidence: summarizePrintedSpatialEvidence(
+            parsePrintedTsv(result.data.tsv ?? ''),
+          ),
+        } : {}),
       };
     } finally {
       await worker.terminate();
