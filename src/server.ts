@@ -44,6 +44,7 @@ import {
 } from './ocr/printed-deskew-safety.js';
 
 import { buildPrintedTextView } from './ocr/printed-document-layout.js';
+import { buildGeometricReadingView } from './ocr/printed-geometric-layout.js';
 
 const app = express();
 
@@ -435,6 +436,14 @@ app.post(
               .join('\n\n'),
 
           readableText: buildPrintedTextView(pageResults.map(page => page.text).join('\n\n')).readable,
+          structuredText: pageResults.map(page => {
+            const words = page.spatialEvidence?.words ?? [];
+            return words.length > 0 ? buildGeometricReadingView(words).text : buildPrintedTextView(page.text).readable;
+          }).join('\n\n'),
+          layoutBlocks: pageResults.map(page => ({
+            pageNumber: page.pageNumber,
+            ...buildGeometricReadingView(page.spatialEvidence?.words ?? []),
+          })),
           confidence,
           quality,
           durationMs,
