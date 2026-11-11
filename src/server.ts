@@ -47,6 +47,9 @@ import { buildPrintedTextView } from './ocr/printed-document-layout.js';
 import { buildGeometricReadingView } from './ocr/printed-geometric-layout.js';
 import { prepareRegionForSecondReading } from './ocr/printed-region-review.js';
 import type { PrintedSpatialWord } from './ocr/printed-spatial-evidence.js';
+import { shutdownDefaultWorkerPool } from './ocr/tesseract-worker-pool.js';
+import { getDefaultOllamaClient } from './ai/ollama-client.js';
+import { SemanticAnalyzer, type SemanticAnalysisResult } from './ai/semantic-analyzer.js';
 
 const app = express();
 let regionalReviewsInFlight = 0;
@@ -83,6 +86,64 @@ app.get(
       ok: true,
       service: 'tevi-ocr',
     });
+  },
+);
+
+app.get(
+  '/api/ai/health',
+  async (_request, response) => {
+    const client = getDefaultOllamaClient();
+    const health = await client.checkHealth();
+    response.json({
+      ok: true,
+      ai: {
+        enabled: config.ollama.enabled,
+        baseUrl: config.ollama.baseUrl,
+        ...health,
+      },
+    });
+  },
+);
+
+app.post(
+  '/api/ocr/analyze-semantics',
+  async (request, response) => {
+    try {
+      const text = typeof request.body?.text === 'string' ? request.body.text : '';
+      if (!text.trim()) {
+        response.status(400).json({
+          ok: false,
+          error: 'TEXT_REQUIRED',
+          message: 'Debe proporcionar texto para análisis semántico.',
+        });
+        return;
+      }
+
+      const mode = request.body?.mode === 'deep' ? 'deep' : 'assisted';
+      const lowConfidenceWords = Array.isArray(request.body?.lowConfidenceWords)
+        ? request.body.lowConfidenceWords
+        : undefined;
+
+      const analyzer = new SemanticAnalyzer();
+      const result = await analyzer.analyze({
+        rawText: text,
+        readableText: typeof request.body?.readableText === 'string' ? request.body.readableText : text,
+        lowConfidenceWords,
+        mode,
+      });
+
+      response.json({
+        ok: true,
+        aiReview: result,
+      });
+    } catch (error) {
+      console.error('Semantic analysis error:', error);
+      response.status(500).json({
+        ok: false,
+        error: 'SEMANTIC_ANALYSIS_ERROR',
+        message: 'Fallo al procesar análisis semántico.',
+      });
+    }
   },
 );
 
@@ -398,6 +459,58 @@ app.post(
           0,
         );
 
+      const combinedRawText = pageResults
+        .map((page) => page.text)
+        .join('\n\n');
+      const readableText = buildPrintedTextView(combinedRawText).readable;
+      const structuredText = pageResults.map(page => {
+        const words = page.spatialEvidence?.words ?? [];
+        return words.length > 0 ? buildGeometricReadingView(words).text : buildPrintedTextView(page.text).readable;
+      }).join('\n\n');
+
+      const allLowConfidenceWords = pageResults.flatMap((page) =>
+        (page.spatialEvidence?.lowConfidenceWords ?? []).map((w, idx) => ({
+          id: `p${page.pageNumber}-w${idx + 1}`,
+          text: w.text,
+          confidence: w.confidence,
+          lineText: undefined,
+        })),
+      );
+
+      const requestedAiMode = request.body?.aiReview ?? request.query?.aiReview;
+      let effectiveAiMode: 'conventional' | 'assisted' | 'deep' = 'conventional';
+      if (requestedAiMode === 'assisted' || requestedAiMode === 'deep') {
+        effectiveAiMode = requestedAiMode;
+      } else if (requestedAiMode === 'conventional' || requestedAiMode === 'none') {
+        effectiveAiMode = 'conventional';
+      } else if (config.ollama.enabled && (quality.status === 'REVIEW' || quality.status === 'INSUFFICIENT')) {
+        effectiveAiMode = 'assisted';
+      }
+
+      let aiReview: SemanticAnalysisResult;
+      if (effectiveAiMode !== 'conventional' && config.ollama.enabled) {
+        const analyzer = new SemanticAnalyzer();
+        aiReview = await analyzer.analyze({
+          rawText: combinedRawText,
+          readableText,
+          lowConfidenceWords: allLowConfidenceWords,
+          mode: effectiveAiMode,
+        });
+      } else {
+        aiReview = {
+          enabled: false,
+          available: true,
+          executionMode: 'conventional',
+          classification: {
+            documentType: 'OTRO',
+            documentIntent: 'Procesamiento convencional sin inferencia LLM',
+            confidence: 1.0,
+          },
+          anomalies: [],
+          extractedFields: [],
+        };
+      }
+
       response.json({
         ok: true,
 
@@ -432,18 +545,10 @@ app.post(
             false,
 
           text:
-            pageResults
-              .map(
-                (page) =>
-                  page.text,
-              )
-              .join('\n\n'),
+            combinedRawText,
 
-          readableText: buildPrintedTextView(pageResults.map(page => page.text).join('\n\n')).readable,
-          structuredText: pageResults.map(page => {
-            const words = page.spatialEvidence?.words ?? [];
-            return words.length > 0 ? buildGeometricReadingView(words).text : buildPrintedTextView(page.text).readable;
-          }).join('\n\n'),
+          readableText,
+          structuredText,
           layoutBlocks: pageResults.map(page => ({
             pageNumber: page.pageNumber,
             ...buildGeometricReadingView(page.spatialEvidence?.words ?? []),
@@ -454,6 +559,7 @@ app.post(
           preprocessingDurationMs,
           pages:
             pageResults,
+          aiReview,
         },
       });
     } catch (error) {
@@ -686,7 +792,7 @@ app.use(
 if (
   process.env.NODE_ENV !== 'test'
 ) {
-  app.listen(
+  const server = app.listen(
     config.port,
     '127.0.0.1',
     () => {
@@ -695,6 +801,14 @@ if (
       );
     },
   );
+
+  const shutdown = async () => {
+    server.close();
+    await shutdownDefaultWorkerPool();
+  };
+
+  process.once('SIGINT', shutdown);
+  process.once('SIGTERM', shutdown);
 }
 
 export { app };
