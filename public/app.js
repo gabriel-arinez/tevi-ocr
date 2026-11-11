@@ -143,7 +143,170 @@ let previewUrl = null;
 let printedTextState = { raw: '', readable: '', structured: '', current: 'readable' };
 let printedImagePreviewUrl = null;
 let lastPrintedFile = null;
+let lastOcrText = '';
+let lastLowConfidenceWords = [];
 const regionalReviewResult = document.getElementById('regionalReviewResult');
+
+const aiStatusBadge = document.getElementById('aiStatusBadge');
+const aiStatusLabel = document.getElementById('aiStatusLabel');
+const aiReviewPanel = document.getElementById('aiReviewPanel');
+const deepReviewButton = document.getElementById('deepReviewButton');
+const aiDocType = document.getElementById('aiDocType');
+const aiDocIntent = document.getElementById('aiDocIntent');
+const aiSuggestionsSection = document.getElementById('aiSuggestionsSection');
+const aiSuggestionsList = document.getElementById('aiSuggestionsList');
+const aiFieldsSection = document.getElementById('aiFieldsSection');
+const aiFieldsList = document.getElementById('aiFieldsList');
+const aiTelemetryBar = document.getElementById('aiTelemetryBar');
+
+async function checkAiHealth() {
+  if (!aiStatusBadge || !aiStatusLabel) return;
+  try {
+    const res = await fetch('/api/ai/health');
+    const data = await res.json();
+    if (data.ok && data.ai) {
+      if (data.ai.available && data.ai.modelAvailable) {
+        aiStatusBadge.className = 'ai-status-pill online';
+        aiStatusLabel.textContent = `Llama 3.2: Activo (${data.ai.latencyMs ? data.ai.latencyMs + 'ms' : 'OK'})`;
+      } else if (data.ai.circuitBreaker === 'OPEN') {
+        aiStatusBadge.className = 'ai-status-pill fallback';
+        aiStatusLabel.textContent = 'Llama 3.2: En espera (Circuit Breaker)';
+      } else {
+        aiStatusBadge.className = 'ai-status-pill fallback';
+        aiStatusLabel.textContent = 'Llama 3.2: No disponible (Fallback)';
+      }
+    }
+  } catch {
+    aiStatusBadge.className = 'ai-status-pill offline';
+    aiStatusLabel.textContent = 'Llama 3.2: Desconectado';
+  }
+}
+
+function clearAiReview() {
+  if (!aiReviewPanel) return;
+  aiReviewPanel.hidden = true;
+  aiSuggestionsList?.replaceChildren();
+  aiFieldsList?.replaceChildren();
+  if (aiTelemetryBar) aiTelemetryBar.textContent = '';
+}
+
+function renderAiReview(aiReview) {
+  if (!aiReviewPanel || !aiReview) return;
+
+  if (!aiReview.enabled && (!aiReview.anomalies || aiReview.anomalies.length === 0)) {
+    if (aiReview.error) {
+      aiReviewPanel.hidden = false;
+      aiDocType.textContent = 'FALLBACK ACTIVO';
+      aiDocIntent.textContent = `Análisis LLM no disponible: ${aiReview.error}`;
+      aiSuggestionsList.replaceChildren();
+      aiFieldsSection.hidden = true;
+      aiTelemetryBar.textContent = 'OCR convencional preservado sin pérdida de datos.';
+      return;
+    }
+    aiReviewPanel.hidden = true;
+    return;
+  }
+
+  aiReviewPanel.hidden = false;
+  aiDocType.textContent = aiReview.classification?.documentType || 'DOCUMENTO';
+  aiDocIntent.textContent = aiReview.classification?.documentIntent || 'Documento procesado';
+
+  aiSuggestionsList.replaceChildren();
+  const anomalies = aiReview.anomalies ?? [];
+  if (anomalies.length === 0) {
+    const li = document.createElement('li');
+    li.className = 'ocr-note';
+    li.textContent = 'No se observaron anomalías tipográficas relevantes en el fragmento evaluado.';
+    aiSuggestionsList.append(li);
+  } else {
+    for (const anom of anomalies) {
+      const item = document.createElement('li');
+      item.className = 'ai-suggestion-item';
+
+      const diff = document.createElement('div');
+      diff.className = 'ai-suggestion-diff';
+
+      const orig = document.createElement('span');
+      orig.className = 'ai-diff-orig';
+      orig.textContent = anom.originalText;
+
+      const arrow = document.createElement('span');
+      arrow.className = 'ai-diff-arrow';
+      arrow.textContent = '→';
+
+      const sugg = document.createElement('span');
+      sugg.className = 'ai-diff-suggested';
+      sugg.textContent = anom.suggestedAlternative;
+
+      const badge = document.createElement('span');
+      badge.className = `ai-diff-badge ${anom.isProtectedField ? 'protected' : 'suggested'}`;
+      badge.textContent = anom.status === 'REJECTED'
+        ? `Rechazada (${anom.rejectionReason ?? 'insegura'})`
+        : anom.isProtectedField ? 'Protegida' : 'Sugerencia';
+
+      diff.append(orig, arrow, sugg, badge);
+
+      const reason = document.createElement('div');
+      reason.className = 'ai-suggestion-reason';
+      reason.textContent = `${anom.reason || 'Corrección contextual'} · Distancia Levenshtein: ${anom.charDistance}`;
+
+      item.append(diff, reason);
+      aiSuggestionsList.append(item);
+    }
+  }
+
+  const fields = (aiReview.extractedFields ?? []).filter(f => f.verified);
+  if (fields.length > 0) {
+    aiFieldsSection.hidden = false;
+    aiFieldsList.replaceChildren();
+    for (const f of fields) {
+      const chip = document.createElement('div');
+      chip.className = 'ai-field-chip';
+      chip.innerHTML = `<strong>${f.fieldName}:</strong> <span>${f.value}</span> <small>("${f.exactOcrEvidence}")</small>`;
+      aiFieldsList.append(chip);
+    }
+  } else {
+    aiFieldsSection.hidden = true;
+  }
+
+  if (aiReview.telemetry) {
+    const tel = aiReview.telemetry;
+    aiTelemetryBar.textContent = `Llama 3.2 · Prompt: ${tel.promptEvalCount} tokens · Gen: ${tel.evalCount} tokens (${tel.tokensPerSecond} tok/s) · Inferencia: ${tel.totalDurationMs}ms · Round-trip: ${tel.httpDurationMs}ms`;
+  } else {
+    aiTelemetryBar.textContent = '';
+  }
+}
+
+if (deepReviewButton) {
+  deepReviewButton.addEventListener('click', async () => {
+    if (!lastOcrText) return;
+    deepReviewButton.disabled = true;
+    const oldText = deepReviewButton.textContent;
+    deepReviewButton.textContent = 'Analizando con Llama 3.2...';
+    try {
+      const res = await fetch('/api/ocr/analyze-semantics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: lastOcrText,
+          mode: 'deep',
+          lowConfidenceWords: lastLowConfidenceWords,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok && data.aiReview) {
+        renderAiReview(data.aiReview);
+      }
+    } catch (err) {
+      console.error('Deep review error:', err);
+    } finally {
+      deepReviewButton.disabled = false;
+      deepReviewButton.textContent = oldText;
+    }
+  });
+}
+
+checkAiHealth();
 
 async function reviewPrintedWord(word) {
   if (!lastPrintedFile || !word.canLocateOnSource) return;
@@ -673,6 +836,14 @@ async function submitOcr(
     selectedMode,
   );
 
+  const selectedAiMode =
+    document.querySelector('input[name="aiReviewMode"]:checked')?.value ?? 'assisted';
+
+  form.append(
+    'aiReview',
+    selectedAiMode,
+  );
+
   setStatus(
     selectedMode === 'handwritten'
       ? 'Procesando manuscrito con CRAFT + Kraken...'
@@ -685,6 +856,7 @@ async function submitOcr(
   printedEvidencePanel.hidden = true;
   lastPrintedFile = null;
   revokePrintedImagePreview();
+  clearAiReview();
 
   metadataResult.textContent =
     '';
@@ -759,6 +931,19 @@ async function submitOcr(
     printedReviewNotice.hidden = true;
     printedEvidencePanel.hidden = true;
     revokePrintedImagePreview();
+  }
+
+  lastOcrText = payload.ocr.readableText ?? payload.ocr.text;
+  lastLowConfidenceWords = (payload.ocr.pages ?? []).flatMap(page =>
+    (page.spatialEvidence?.lowConfidenceWords ?? []).map((w, idx) => ({
+      id: `p${page.pageNumber}-w${idx + 1}`,
+      text: w.text,
+      confidence: w.confidence,
+    }))
+  );
+
+  if (payload.ocr.aiReview) {
+    renderAiReview(payload.ocr.aiReview);
   }
 
   metadataResult.textContent = [

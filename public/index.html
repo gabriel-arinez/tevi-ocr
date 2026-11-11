@@ -61,6 +61,29 @@
         </p>
       </fieldset>
       <br>
+
+      <fieldset class="mode-selector" aria-describedby="aiModeHelp">
+        <legend>Inteligencia semántica Llama 3.2</legend>
+        <div class="ai-controls-group">
+          <label class="ai-mode-option">
+            <input type="radio" name="aiReviewMode" value="conventional">
+            <span>Convencional (solo OCR)</span>
+          </label>
+          <label class="ai-mode-option">
+            <input type="radio" name="aiReviewMode" value="assisted" checked>
+            <span>Asistido (anomalías y sugerencias)</span>
+          </label>
+          <label class="ai-mode-option">
+            <input type="radio" name="aiReviewMode" value="deep">
+            <span>Revisión profunda</span>
+          </label>
+        </div>
+        <br>
+        <p id="aiModeHelp" class="ocr-note">
+          El análisis semántico propone sugerencias asistidas sin alterar la transcripción original ni números contractuales.
+        </p>
+      </fieldset>
+      <br>
       <div class="actions">
         <button
           id="selectFile"
@@ -150,7 +173,13 @@
     </section>
 
     <section class="card">
-      <h2>Estado</h2>
+      <div class="ai-status-row">
+        <h2>Estado</h2>
+        <div id="aiStatusBadge" class="ai-status-pill offline" title="Verificando servicio de IA...">
+          <span class="ai-pill-dot"></span>
+          <span id="aiStatusLabel">IA: Verificando...</span>
+        </div>
+      </div>
 
       <p
         id="status"
@@ -184,6 +213,38 @@
           <div id="printedBoundingBox" class="printed-bounding-box"></div>
         </div>
       </details>
+
+      <section id="aiReviewPanel" class="card ai-panel" hidden>
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Inteligencia semántica Llama 3.2</p>
+            <h2>Análisis documental y sugerencias</h2>
+          </div>
+          <button id="deepReviewButton" type="button" class="secondary" title="Reanalizar documento con revisión semántica profunda">
+            Revisión profunda
+          </button>
+        </div>
+
+        <div class="ai-doc-header">
+          <span id="aiDocType" class="ai-doc-badge">DOCUMENTO</span>
+          <span id="aiDocIntent" class="ai-doc-intent"></span>
+        </div>
+
+        <div id="aiSuggestionsSection">
+          <h3>Sugerencias contextuales observadas</h3>
+          <p class="ocr-note">
+            Alternativas sugeridas para palabras dudosas. Ninguna sustituye la lectura original ni modifica datos sensibles sin confirmación.
+          </p>
+          <ul id="aiSuggestionsList" class="ai-suggestions-list"></ul>
+        </div>
+
+        <div id="aiFieldsSection" hidden>
+          <h3>Campos extraídos con evidencia OCR</h3>
+          <div id="aiFieldsList" class="ai-fields-container"></div>
+        </div>
+
+        <div id="aiTelemetryBar" class="ai-telemetry-bar"></div>
+      </section>
 
       <details
         id="ocrMetadataDetails"
