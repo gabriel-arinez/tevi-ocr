@@ -468,14 +468,18 @@ app.post(
         return words.length > 0 ? buildGeometricReadingView(words).text : buildPrintedTextView(page.text).readable;
       }).join('\n\n');
 
-      const allLowConfidenceWords = pageResults.flatMap((page) =>
-        (page.spatialEvidence?.lowConfidenceWords ?? []).map((w, idx) => ({
-          id: `p${page.pageNumber}-w${idx + 1}`,
-          text: w.text,
-          confidence: w.confidence,
-          lineText: undefined,
-        })),
-      );
+      const allLowConfidenceWords = pageResults.flatMap((page) => {
+        const pageLines = page.text.split('\n');
+        return (page.spatialEvidence?.lowConfidenceWords ?? []).map((w, idx) => {
+          const matchingLine = pageLines.find((line) => line.includes(w.text)) ?? page.text.slice(0, 100);
+          return {
+            id: `p${page.pageNumber}-w${idx + 1}`,
+            text: w.text,
+            confidence: w.confidence,
+            lineText: matchingLine.trim(),
+          };
+        });
+      });
 
       const requestedAiMode = request.body?.aiReview ?? request.query?.aiReview;
       let effectiveAiMode: 'conventional' | 'assisted' | 'deep' = 'conventional';

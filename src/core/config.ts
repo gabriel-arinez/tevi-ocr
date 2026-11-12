@@ -21,7 +21,7 @@ export const config = Object.freeze({
     baseUrl: process.env.OLLAMA_BASE_URL ?? 'http://10.1.1.229:11434',
     model: process.env.OLLAMA_MODEL ?? 'llama3.2:latest',
     enabled: process.env.OLLAMA_ENABLED !== 'false',
-    timeoutMs: Math.max(500, Number(process.env.OLLAMA_TIMEOUT_MS ?? 10000)),
+    timeoutMs: Math.max(500, Number(process.env.OLLAMA_TIMEOUT_MS ?? 60000)),
     keepAlive: process.env.OLLAMA_KEEP_ALIVE ?? '20m',
     temperature: Math.max(0, Math.min(1, Number(process.env.OLLAMA_TEMPERATURE ?? 0))),
     numCtx: Math.max(512, Number(process.env.OLLAMA_NUM_CTX ?? 2048)),
