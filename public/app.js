@@ -238,7 +238,6 @@ async function checkAiHealth() {
 function clearAiReview() {
   if (!aiReviewPanel) return;
   aiReviewPanel.hidden = true;
-  aiSuggestionsList?.replaceChildren();
   aiFieldsList?.replaceChildren();
   if (aiTelemetryBar) aiTelemetryBar.textContent = '';
 }
@@ -317,7 +316,6 @@ async function reviewPrintedWord(word) {
       ? error.message : 'No se pudo verificar la región.';
   }
 }
-const geometricTextButton = document.getElementById('geometricTextButton');
 const printedImageOverlay = document.getElementById('printedImageOverlay');
 const printedImagePreview = document.getElementById('printedImagePreview');
 const printedBoundingBox = document.getElementById('printedBoundingBox');
