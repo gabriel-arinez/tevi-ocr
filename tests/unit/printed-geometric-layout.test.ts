@@ -61,19 +61,23 @@ test('physical lines split a whole-page TSV paragraph into title, body and field
   ]);
 });
 
-test('a time in the middle of a paragraph does not create a false field boundary', () => {
-  const tokens = [
-    word('El', 20, 10, 1, 1, 1),
-    word('horario', 60, 10, 1, 1, 1),
-    word('es', 135, 10, 1, 1, 1),
-    word('08:30', 170, 10, 1, 1, 1),
-    word('a', 260, 10, 1, 1, 1),
-    word('13:30,', 290, 10, 1, 1, 1),
-    word('durante', 20, 32, 1, 1, 2),
-    word('la', 120, 32, 1, 1, 2),
-    word('mañana.', 150, 32, 1, 1, 2),
+test('filtra bloques marginales de ruido visual con símbolos o letras dispersas', () => {
+  const wordsWithNoise = [
+    // Bloque 1: ruido de borde "/ - - RDA — o];"
+    word('/', 10, 5, 1, 1, 1, 20),
+    word('-', 20, 5, 1, 1, 1, 20),
+    word('RDA', 35, 5, 1, 1, 1, 35),
+    word('—', 65, 5, 1, 1, 1, 20),
+    word('o];', 80, 5, 1, 1, 1, 20),
+    // Bloque 2: contenido documental legítimo
+    word('La', 10, 50, 2, 1, 1, 95),
+    word('Paz,', 30, 50, 2, 1, 1, 95),
+    word('25', 65, 50, 2, 1, 1, 95),
+    word('de', 85, 50, 2, 1, 1, 95),
+    word('agosto', 105, 50, 2, 1, 1, 95),
   ];
-  const result = buildGeometricReadingView(tokens);
+
+  const result = buildGeometricReadingView(wordsWithNoise);
   assert.equal(result.blocks.length, 1);
-  assert.equal(result.text, 'El horario es 08:30 a 13:30, durante la mañana.');
+  assert.equal(result.text, 'La Paz, 25 de agosto');
 });

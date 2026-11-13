@@ -141,11 +141,42 @@ export function buildGeometricPrintedLayout(words: readonly PrintedSpatialWord[]
   });
 }
 
+export function isGeometricNoiseBlock(block: PrintedLayoutBlock): boolean {
+  const trimmed = block.text.trim();
+  if (!trimmed) return true;
+
+  const lettersAndDigits = [...trimmed].filter(c => /[\p{L}\p{N}]/u.test(c));
+  const symbolsAndPunct = [...trimmed].filter(c => /[^\p{L}\p{N}\s]/u.test(c));
+
+  // Extreme symbol ratio (e.g. "/ - - RDA — o];")
+  if (lettersAndDigits.length > 0 && symbolsAndPunct.length / (lettersAndDigits.length + symbolsAndPunct.length) > 0.45) {
+    if (lettersAndDigits.length <= 6) return true;
+  }
+
+  // Single-character scattered fragments (e.g. "e y j XA A YN / N ON /")
+  const tokens = trimmed.split(/\s+/).filter(t => t.length > 0);
+  const shortTokens = tokens.filter(t => {
+    const clean = t.replace(/^[\p{P}\p{S}]+|[\p{P}\p{S}]+$/gu, '');
+    return clean.length <= 2;
+  });
+  if (tokens.length >= 4 && shortTokens.length / tokens.length >= 0.75) {
+    const hasLongerWord = tokens.some(t => t.replace(/^[\p{P}\p{S}]+|[\p{P}\p{S}]+$/gu, '').length >= 4);
+    if (!hasLongerWord) return true;
+  }
+
+  return false;
+}
+
 export function buildGeometricReadingView(words: readonly PrintedSpatialWord[]) {
   const blocks = buildGeometricPrintedLayout(words);
+  const cleanBlocks = blocks.filter(b => !isGeometricNoiseBlock(b));
+  // Fall back to all blocks if filtering everything
+  const effectiveBlocks = cleanBlocks.length > 0 ? cleanBlocks : blocks;
+
   return {
-    blocks, text: blocks.map(b => b.text).join('\n\n'),
-    needsReview: blocks.some(b => b.meanConfidence < 50),
+    blocks: effectiveBlocks,
+    text: effectiveBlocks.map(b => b.text).join('\n\n'),
+    needsReview: effectiveBlocks.some(b => b.meanConfidence < 50),
     layoutConfidence: 'unverified' as const,
   };
 }

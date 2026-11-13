@@ -214,6 +214,53 @@ describe('SemanticAnalyzer', () => {
     assert.equal(result.telemetry.evalCount, 330);
   });
 
+  it('deduplica candidatos idénticos para no consumir presupuesto en la misma sigla o término', () => {
+    const analyzer = new SemanticAnalyzer();
+    const docText = `
+      C.I. 13497224 L.P., estudiante de la carrera
+      y pasante en la sede L.P. de Impuestos
+      La Paz, 25 de agosto de 2026 L.P.
+      palabra extrañ0_~ dudosa aquí
+    `;
+
+    const selected = analyzer.selectRelevantAnomalies({
+      rawText: docText,
+      lowConfidenceWords: [
+        { id: 'w1', text: 'L.P.', confidence: 40, lineText: 'C.I. 13497224 L.P., estudiante' },
+        { id: 'w2', text: 'L.P.,', confidence: 45, lineText: 'y pasante en la sede L.P. de' },
+      ],
+      maxCandidates: 4,
+    });
+
+    // Should include L.P. at most once, and include other anomalies like extrañ0_~
+    const lpCandidates = selected.filter(s => s.text.includes('L.P'));
+    assert.equal(lpCandidates.length, 1, 'Debe incluir L.P. como máximo una sola vez');
+    assert.ok(selected.some(s => s.text.includes('extrañ0_~')), 'Debe incluir otros candidatos diversos');
+  });
+
+  it('descarta líneas de ruido visual de bordes o cabeceras fragmentadas', () => {
+    const analyzer = new SemanticAnalyzer();
+    const docText = `
+      e y j XA A YN / N ON /
+      / - - RDA — o];
+      La Paz, 25 de agosto de 2026
+      AUTORIZACIÓN DE PERMISO
+      Por medio de la presente se autoriza al pasante con revlsión pendiente.
+    `;
+
+    const selected = analyzer.selectRelevantAnomalies({
+      rawText: docText,
+      lowConfidenceWords: [
+        { id: 'noise1', text: 'RDA', confidence: 30, lineText: '/ - - RDA — o];' },
+        { id: 'cand1', text: 'revlsión', confidence: 55, lineText: 'Por medio de la presente se autoriza al pasante con revlsión pendiente.' },
+      ],
+      maxCandidates: 4,
+    });
+
+    assert.equal(selected.some(s => s.text === 'RDA'), false, 'RDA en línea de ruido / - - RDA — o]; debe ser descartada');
+    assert.ok(selected.some(s => s.text === 'revlsión'), 'revlsión en línea legítima debe ser seleccionada');
+  });
+
   it('aplica fallback seguro y no lanza excepción si Ollama falla', async () => {
     const client = new OllamaClient({
       fetchFn: async () => {

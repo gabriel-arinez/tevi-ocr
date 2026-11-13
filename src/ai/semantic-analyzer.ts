@@ -76,6 +76,50 @@ const PROTECTED_DIGIT_REGEX = /\d/;
 const CONTRACTUAL_LABEL_REGEX = /\b(nit|c[oó]digo|fecha|monto|bs|total|c\.i|ci)\b/i;
 
 /**
+ * Normalizes a candidate token text for deduplication:
+ * strips leading/trailing non-alphanumeric punctuation and lowercases.
+ * (e.g., "L.P." -> "l.p", "L.P.," -> "l.p")
+ */
+export function normalizeTokenKey(text: string): string {
+  return text.trim().replace(/^[\p{P}\p{S}]+|[\p{P}\p{S}]+$/gu, '').toLowerCase();
+}
+
+/**
+ * Detects whether a physical text line is likely visual noise (scanner edge artifacts,
+ * binding marks, single-letter scatter or dust) rather than genuine document content.
+ */
+export function isNoisyHeaderOrBorderLine(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed) return true;
+
+  const tokens = trimmed.split(/\s+/).filter(t => t.length > 0);
+  if (tokens.length === 0) return true;
+
+  const lettersAndDigits = [...trimmed].filter(c => /[\p{L}\p{N}]/u.test(c));
+  const symbolsAndPunct = [...trimmed].filter(c => /[^\p{L}\p{N}\s]/u.test(c));
+
+  // 1. Extreme symbol density (e.g. "/ - - RDA — o];")
+  if (lettersAndDigits.length > 0 && symbolsAndPunct.length / (lettersAndDigits.length + symbolsAndPunct.length) > 0.45) {
+    // If letters are very few (<= 6) and symbols dominate, it's noise
+    if (lettersAndDigits.length <= 6) return true;
+  }
+
+  // 2. Fragmented single-character scatter: mostly 1-char tokens with slashes/dashes
+  // (e.g. "e y j XA A YN / N ON /")
+  const shortTokens = tokens.filter(t => {
+    const clean = t.replace(/^[\p{P}\p{S}]+|[\p{P}\p{S}]+$/gu, '');
+    return clean.length <= 2;
+  });
+  if (tokens.length >= 4 && shortTokens.length / tokens.length >= 0.75) {
+    // If the line doesn't contain standard recognizable Spanish words or numbers
+    const hasLongerWord = tokens.some(t => t.replace(/^[\p{P}\p{S}]+|[\p{P}\p{S}]+$/gu, '').length >= 4);
+    if (!hasLongerWord) return true;
+  }
+
+  return false;
+}
+
+/**
  * Calculates an anomaly relevance score for an OCR token.
  * Higher score indicates a higher priority for semantic evaluation.
  */
@@ -151,8 +195,13 @@ export class SemanticAnalyzer {
         const textClean = w.text.trim();
         if (!textClean) continue;
         const lineText = w.lineText || lines.find(l => l.includes(textClean)) || textClean;
+
+        // Skip words located inside noisy border or header lines
+        if (isNoisyHeaderOrBorderLine(lineText)) continue;
+
         const score = scoreWordAnomaly(textClean, w.confidence);
-        if (score > 0) {
+        const normKey = normalizeTokenKey(textClean);
+        if (score > 0 && !seenWords.has(normKey)) {
           candidates.push({
             item: {
               id: w.id,
@@ -163,7 +212,7 @@ export class SemanticAnalyzer {
             score,
             lineKey: lineText.trim().slice(0, 40),
           });
-          seenWords.add(textClean.toLowerCase());
+          seenWords.add(normKey);
         }
       }
     }
@@ -171,11 +220,15 @@ export class SemanticAnalyzer {
     // 2. Scan entire document for lexical/spatial anomalies
     let autoCounter = 1;
     for (const line of lines) {
+      // Discard border noise lines from anomaly extraction
+      if (isNoisyHeaderOrBorderLine(line)) continue;
+
       const tokens = line.trim().split(/\s+/);
       for (const token of tokens) {
         const clean = token.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
         if (clean.length < 2) continue;
-        if (seenWords.has(token.toLowerCase())) continue;
+        const normKey = normalizeTokenKey(token);
+        if (seenWords.has(normKey)) continue;
 
         const score = scoreWordAnomaly(token);
         if (score >= 45) {
@@ -189,7 +242,7 @@ export class SemanticAnalyzer {
             score,
             lineKey: line.trim().slice(0, 40),
           });
-          seenWords.add(token.toLowerCase());
+          seenWords.add(normKey);
         }
       }
     }
@@ -197,16 +250,21 @@ export class SemanticAnalyzer {
     // 3. Sort by priority score descending
     candidates.sort((a, b) => b.score - a.score);
 
-    // 4. Select top candidates with line diversity (max 2 per line) to cover the whole document
+    // 4. Select top candidates with line diversity (max 2 per line) and global deduplication
     const selected: WordContextItem[] = [];
     const lineUsageCount = new Map<string, number>();
+    const selectedNormKeys = new Set<string>();
 
     for (const cand of candidates) {
+      const normKey = normalizeTokenKey(cand.item.text);
+      if (selectedNormKeys.has(normKey)) continue;
+
       const usage = lineUsageCount.get(cand.lineKey) ?? 0;
       if (usage >= 2 && candidates.length > maxCandidates) {
         continue; // preserve spatial diversity across lines
       }
       selected.push(cand.item);
+      selectedNormKeys.add(normKey);
       lineUsageCount.set(cand.lineKey, usage + 1);
       if (selected.length >= maxCandidates) break;
     }
