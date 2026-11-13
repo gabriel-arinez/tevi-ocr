@@ -322,12 +322,12 @@ const printedBoundingBox = document.getElementById('printedBoundingBox');
 function revokePrintedImagePreview() {
   if (printedImagePreviewUrl) URL.revokeObjectURL(printedImagePreviewUrl);
   printedImagePreviewUrl = null;
-  printedImagePreview.removeAttribute('src');
-  printedImageOverlay.hidden = true;
-  regionalReviewResult.textContent = '';
+  if (printedImagePreview) printedImagePreview.removeAttribute('src');
+  if (printedImageOverlay) printedImageOverlay.hidden = true;
+  if (regionalReviewResult) regionalReviewResult.textContent = '';
 }
 function selectPrintedWord(word) {
-  if (!printedImagePreviewUrl) return;
+  if (!printedImagePreviewUrl || !printedImagePreview || !printedBoundingBox) return;
   const width = printedImagePreview.naturalWidth;
   const height = printedImagePreview.naturalHeight;
   if (!width || !height) return;
@@ -336,7 +336,7 @@ function selectPrintedWord(word) {
   printedBoundingBox.style.top = (box.top / height * 100) + '%';
   printedBoundingBox.style.width = (box.width / width * 100) + '%';
   printedBoundingBox.style.height = (box.height / height * 100) + '%';
-  printedImageOverlay.hidden = false;
+  if (printedImageOverlay) printedImageOverlay.hidden = false;
 }
 const printedTextControls = document.getElementById('printedTextControls');
 const printedReviewNotice = document.getElementById('printedReviewNotice');
@@ -900,7 +900,7 @@ async function submitOcr(
     if (payload.document.kind !== 'pdf') {
       lastPrintedFile = file;
       printedImagePreviewUrl = URL.createObjectURL(file);
-      printedImagePreview.src = printedImagePreviewUrl;
+      if (printedImagePreview) printedImagePreview.src = printedImagePreviewUrl;
     }
     const synthesis = payload.ocr.documentSynthesis;
     printedTextState = {
@@ -910,8 +910,8 @@ async function submitOcr(
       interventions: synthesis?.interventions || [],
       current: 'final',
     };
-    printedTextControls.hidden = false;
-    printedReviewNotice.hidden = false;
+    if (printedTextControls) printedTextControls.hidden = false;
+    if (printedReviewNotice) printedReviewNotice.hidden = false;
     showPrintedText('final');
     renderPrintedEvidence(payload.ocr.pages);
   } else {
