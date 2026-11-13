@@ -814,3 +814,97 @@ button.secondary {
 .ai-field-chip span { color: #1a73e8; font-family: monospace; font-weight: 600; }
 
 .ai-telemetry-bar { display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.75rem; color: #70757a; font-family: monospace; border-top: 1px solid #f1f3f4; padding-top: 0.5rem; margin-top: 0.75rem; }
+
+/* 2-View Pipeline & Technological Attribution UI */
+.result-container { position: relative; width: 100%; margin-top: 0.75rem; }
+.audit-rendered {
+  font-family: inherit;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.7;
+  font-size: 1rem;
+  background: #ffffff;
+  border: 1px solid #dce2ea;
+  border-radius: 8px;
+  padding: 1.25rem;
+  min-height: 12rem;
+  color: #1a202c;
+}
+.audit-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  margin: 0.6rem 0;
+  font-size: 0.82rem;
+}
+.audit-legend-item { display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 500; }
+.audit-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.dot-llama { background: #805ad5; }
+.dot-rules { background: #3182ce; }
+.dot-shield { background: #dd6b20; }
+.dot-noise { background: #a0aec0; }
+
+.audit-mark {
+  cursor: pointer;
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+  position: relative;
+  font-weight: 600;
+  transition: all 0.15s ease-in-out;
+}
+.audit-mark:hover, .audit-mark:focus {
+  filter: brightness(0.95);
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.15);
+}
+
+/* 🟣 Llama 3.2: Contextual AI corrections */
+.audit-mark-llama {
+  background: #f3e8ff;
+  color: #6b21a8;
+  border-bottom: 2px solid #9333ea;
+}
+
+/* 🔵 Deterministic Rules: Legal / Format normalization */
+.audit-mark-rules {
+  background: #ebf8ff;
+  color: #2b6cb0;
+  border-bottom: 2px solid #3182ce;
+}
+
+/* 🟡 Security Shield: Protected contractual/numeric field */
+.audit-mark-shield {
+  background: #fffaf0;
+  color: #c05621;
+  border-bottom: 2px solid #dd6b20;
+}
+
+/* ⚪ Geometric Filter: Noise removal / border artifacts */
+.audit-mark-noise {
+  background: #edf2f7;
+  color: #718096;
+  text-decoration: line-through;
+}
+
+/* Interactive Floating Tooltip */
+.audit-tooltip {
+  position: absolute;
+  z-index: 1000;
+  background: #1a202c;
+  color: #ffffff;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  max-width: 22rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  font-family: system-ui, sans-serif;
+  line-height: 1.4;
+}
+.audit-tooltip strong { display: block; margin-bottom: 0.2rem; font-size: 0.85rem; }
+.audit-tooltip .tt-author { color: #a3bffa; font-weight: 600; }
+.audit-tooltip .tt-diff { margin: 0.2rem 0; font-family: monospace; }
+.audit-tooltip .tt-reason { color: #cbd5e0; font-style: italic; }

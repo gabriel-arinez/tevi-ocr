@@ -50,6 +50,7 @@ import type { PrintedSpatialWord } from './ocr/printed-spatial-evidence.js';
 import { shutdownDefaultWorkerPool } from './ocr/tesseract-worker-pool.js';
 import { getDefaultOllamaClient } from './ai/ollama-client.js';
 import { SemanticAnalyzer, type SemanticAnalysisResult } from './ai/semantic-analyzer.js';
+import { synthesizeDocumentView, type DocumentSynthesisResult } from './ai/document-synthesizer.js';
 
 const app = express();
 let regionalReviewsInFlight = 0;
@@ -482,14 +483,8 @@ app.post(
       });
 
       const requestedAiMode = request.body?.aiReview ?? request.query?.aiReview;
-      let effectiveAiMode: 'conventional' | 'assisted' | 'deep' = 'conventional';
-      if (requestedAiMode === 'assisted' || requestedAiMode === 'deep') {
-        effectiveAiMode = requestedAiMode;
-      } else if (requestedAiMode === 'conventional' || requestedAiMode === 'none') {
-        effectiveAiMode = 'conventional';
-      } else if (config.ollama.enabled && (quality.status === 'REVIEW' || quality.status === 'INSUFFICIENT')) {
-        effectiveAiMode = 'assisted';
-      }
+      const isConventional = requestedAiMode === 'conventional' || requestedAiMode === 'none';
+      const effectiveAiMode: 'conventional' | 'assisted' = isConventional ? 'conventional' : 'assisted';
 
       let aiReview: SemanticAnalysisResult;
       if (effectiveAiMode !== 'conventional' && config.ollama.enabled) {
@@ -498,7 +493,7 @@ app.post(
           rawText: combinedRawText,
           readableText,
           lowConfidenceWords: allLowConfidenceWords,
-          mode: effectiveAiMode,
+          mode: 'assisted',
         });
       } else {
         aiReview = {
@@ -514,6 +509,14 @@ app.post(
           extractedFields: [],
         };
       }
+
+      // Synthesize final polished document and technological audit view
+      const documentSynthesis: DocumentSynthesisResult = synthesizeDocumentView({
+        baseStructuredText: structuredText,
+        anomalies: aiReview.anomalies,
+        extractedFields: aiReview.extractedFields,
+        mode: effectiveAiMode,
+      });
 
       response.json({
         ok: true,
@@ -564,6 +567,7 @@ app.post(
           pages:
             pageResults,
           aiReview,
+          documentSynthesis,
         },
       });
     } catch (error) {

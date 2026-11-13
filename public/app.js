@@ -140,24 +140,77 @@ const closeButton =
 let mediaStream = null;
 let capturedBlob = null;
 let previewUrl = null;
-let printedTextState = { raw: '', readable: '', structured: '', current: 'readable' };
+let printedTextState = {
+  raw: '',
+  final: '',
+  annotatedHtml: '',
+  interventions: [],
+  current: 'final',
+};
 let printedImagePreviewUrl = null;
 let lastPrintedFile = null;
 let lastOcrText = '';
 let lastLowConfidenceWords = [];
 const regionalReviewResult = document.getElementById('regionalReviewResult');
 
+const finalResultButton = document.getElementById('finalResultButton');
+const auditViewButton = document.getElementById('auditViewButton');
+const auditLegend = document.getElementById('auditLegend');
+const ocrAuditResult = document.getElementById('ocrAuditResult');
+
 const aiStatusBadge = document.getElementById('aiStatusBadge');
 const aiStatusLabel = document.getElementById('aiStatusLabel');
 const aiReviewPanel = document.getElementById('aiReviewPanel');
-const deepReviewButton = document.getElementById('deepReviewButton');
 const aiDocType = document.getElementById('aiDocType');
 const aiDocIntent = document.getElementById('aiDocIntent');
-const aiSuggestionsSection = document.getElementById('aiSuggestionsSection');
-const aiSuggestionsList = document.getElementById('aiSuggestionsList');
 const aiFieldsSection = document.getElementById('aiFieldsSection');
 const aiFieldsList = document.getElementById('aiFieldsList');
 const aiTelemetryBar = document.getElementById('aiTelemetryBar');
+
+let activeTooltip = null;
+
+function showAuditTooltip(e) {
+  const target = e.target.closest('.audit-mark');
+  if (!target) return;
+
+  hideAuditTooltip();
+
+  const tooltip = document.createElement('div');
+  tooltip.className = 'audit-tooltip';
+
+  const author = target.getAttribute('data-title') || 'Intervención';
+  const original = target.getAttribute('data-original') || '';
+  const replacement = target.getAttribute('data-replacement') || '';
+  const reason = target.getAttribute('data-reason') || '';
+
+  tooltip.innerHTML = `
+    <strong class="tt-author">${author}</strong>
+    <div class="tt-diff">Antes: <del>${original}</del> → Ahora: <ins>${replacement}</ins></div>
+    <div class="tt-reason">${reason}</div>
+  `;
+
+  document.body.appendChild(tooltip);
+  activeTooltip = tooltip;
+
+  const rect = target.getBoundingClientRect();
+  tooltip.style.left = `${window.scrollX + rect.left}px`;
+  tooltip.style.top = `${window.scrollY + rect.bottom + 6}px`;
+}
+
+function hideAuditTooltip() {
+  if (activeTooltip) {
+    activeTooltip.remove();
+    activeTooltip = null;
+  }
+}
+
+document.addEventListener('mouseover', showAuditTooltip);
+document.addEventListener('mouseout', (e) => {
+  if (e.target.closest('.audit-mark')) {
+    hideAuditTooltip();
+  }
+});
+document.addEventListener('scroll', hideAuditTooltip, { passive: true });
 
 async function checkAiHealth() {
   if (!aiStatusBadge || !aiStatusLabel) return;
@@ -198,7 +251,6 @@ function renderAiReview(aiReview) {
       aiReviewPanel.hidden = false;
       aiDocType.textContent = 'FALLBACK ACTIVO';
       aiDocIntent.textContent = `Análisis LLM no disponible: ${aiReview.error}`;
-      aiSuggestionsList.replaceChildren();
       aiFieldsSection.hidden = true;
       aiTelemetryBar.textContent = 'OCR convencional preservado sin pérdida de datos.';
       return;
@@ -210,50 +262,6 @@ function renderAiReview(aiReview) {
   aiReviewPanel.hidden = false;
   aiDocType.textContent = aiReview.classification?.documentType || 'DOCUMENTO';
   aiDocIntent.textContent = aiReview.classification?.documentIntent || 'Documento procesado';
-
-  aiSuggestionsList.replaceChildren();
-  const anomalies = aiReview.anomalies ?? [];
-  if (anomalies.length === 0) {
-    const li = document.createElement('li');
-    li.className = 'ocr-note';
-    li.textContent = 'No se observaron anomalías tipográficas relevantes en el fragmento evaluado.';
-    aiSuggestionsList.append(li);
-  } else {
-    for (const anom of anomalies) {
-      const item = document.createElement('li');
-      item.className = 'ai-suggestion-item';
-
-      const diff = document.createElement('div');
-      diff.className = 'ai-suggestion-diff';
-
-      const orig = document.createElement('span');
-      orig.className = 'ai-diff-orig';
-      orig.textContent = anom.originalText;
-
-      const arrow = document.createElement('span');
-      arrow.className = 'ai-diff-arrow';
-      arrow.textContent = '→';
-
-      const sugg = document.createElement('span');
-      sugg.className = 'ai-diff-suggested';
-      sugg.textContent = anom.suggestedAlternative;
-
-      const badge = document.createElement('span');
-      badge.className = `ai-diff-badge ${anom.isProtectedField ? 'protected' : 'suggested'}`;
-      badge.textContent = anom.status === 'REJECTED'
-        ? `Rechazada (${anom.rejectionReason ?? 'insegura'})`
-        : anom.isProtectedField ? 'Protegida' : 'Sugerencia';
-
-      diff.append(orig, arrow, sugg, badge);
-
-      const reason = document.createElement('div');
-      reason.className = 'ai-suggestion-reason';
-      reason.textContent = `${anom.reason || 'Corrección contextual'} · Distancia Levenshtein: ${anom.charDistance}`;
-
-      item.append(diff, reason);
-      aiSuggestionsList.append(item);
-    }
-  }
 
   const fields = (aiReview.extractedFields ?? []).filter(f => f.verified);
   if (fields.length > 0) {
@@ -275,35 +283,6 @@ function renderAiReview(aiReview) {
   } else {
     aiTelemetryBar.textContent = '';
   }
-}
-
-if (deepReviewButton) {
-  deepReviewButton.addEventListener('click', async () => {
-    if (!lastOcrText) return;
-    deepReviewButton.disabled = true;
-    const oldText = deepReviewButton.textContent;
-    deepReviewButton.textContent = 'Analizando con Llama 3.2...';
-    try {
-      const res = await fetch('/api/ocr/analyze-semantics', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: lastOcrText,
-          mode: 'deep',
-          lowConfidenceWords: lastLowConfidenceWords,
-        }),
-      });
-      const data = await res.json();
-      if (data.ok && data.aiReview) {
-        renderAiReview(data.aiReview);
-      }
-    } catch (err) {
-      console.error('Deep review error:', err);
-    } finally {
-      deepReviewButton.disabled = false;
-      deepReviewButton.textContent = oldText;
-    }
-  });
 }
 
 checkAiHealth();
@@ -401,24 +380,39 @@ function renderPrintedEvidence(pages) {
     printedEvidenceList.append(more);
   }
 }
-const readableTextButton = document.getElementById('readableTextButton');
-const rawTextButton = document.getElementById('rawTextButton');
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 function showPrintedText(view) {
   printedTextState.current = view;
-  result.textContent = view === 'readable'
-    ? printedTextState.readable : view === 'structured'
-      ? printedTextState.structured : printedTextState.raw;
-  readableTextButton.setAttribute('aria-pressed', String(view === 'readable'));
-  rawTextButton.setAttribute('aria-pressed', String(view === 'raw'));
-  geometricTextButton.setAttribute('aria-pressed', String(view === 'structured'));
-  readableTextButton.classList.toggle('secondary', view !== 'readable');
-  rawTextButton.classList.toggle('secondary', view !== 'raw');
-  geometricTextButton.classList.toggle('secondary', view !== 'structured');
+  const isFinal = view === 'final';
+
+  if (isFinal) {
+    result.hidden = false;
+    ocrAuditResult.hidden = true;
+    auditLegend.hidden = true;
+    result.textContent = printedTextState.final || printedTextState.raw;
+  } else {
+    result.hidden = true;
+    ocrAuditResult.hidden = false;
+    auditLegend.hidden = false;
+    ocrAuditResult.innerHTML = printedTextState.annotatedHtml || escapeHtml(printedTextState.final || printedTextState.raw);
+  }
+
+  finalResultButton?.setAttribute('aria-pressed', String(isFinal));
+  auditViewButton?.setAttribute('aria-pressed', String(!isFinal));
+  finalResultButton?.classList.toggle('secondary', !isFinal);
+  auditViewButton?.classList.toggle('secondary', isFinal);
 }
-readableTextButton.addEventListener('click', () => showPrintedText('readable'));
-rawTextButton.addEventListener('click', () => showPrintedText('raw'));
-geometricTextButton.addEventListener('click', () => showPrintedText('structured'));
+
+finalResultButton?.addEventListener('click', () => showPrintedText('final'));
+auditViewButton?.addEventListener('click', () => showPrintedText('audit'));
 
 
 function setStatus(
@@ -915,21 +909,25 @@ async function submitOcr(
       printedImagePreviewUrl = URL.createObjectURL(file);
       printedImagePreview.src = printedImagePreviewUrl;
     }
+    const synthesis = payload.ocr.documentSynthesis;
     printedTextState = {
       raw: payload.ocr.text,
-      readable: payload.ocr.readableText ?? payload.ocr.text,
-      structured: payload.ocr.structuredText ?? payload.ocr.readableText ?? payload.ocr.text,
-      current: 'readable',
+      final: synthesis?.finalText || payload.ocr.structuredText || payload.ocr.readableText || payload.ocr.text,
+      annotatedHtml: synthesis?.annotatedHtml || '',
+      interventions: synthesis?.interventions || [],
+      current: 'final',
     };
     printedTextControls.hidden = false;
     printedReviewNotice.hidden = false;
-    showPrintedText(payload.document.kind === 'pdf' ? 'readable' : 'structured');
+    showPrintedText('final');
     renderPrintedEvidence(payload.ocr.pages);
   } else {
     result.textContent = payload.ocr.text;
     printedTextControls.hidden = true;
     printedReviewNotice.hidden = true;
     printedEvidencePanel.hidden = true;
+    auditLegend.hidden = true;
+    ocrAuditResult.hidden = true;
     revokePrintedImagePreview();
   }
 
