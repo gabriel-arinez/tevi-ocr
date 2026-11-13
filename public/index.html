@@ -189,68 +189,22 @@
       <h2>Resultado OCR</h2>
 
       <div id="printedTextControls" class="actions" hidden>
-        <button id="finalResultButton" type="button" aria-pressed="true">✨ Resultado Final Pulido</button>
-        <button id="auditViewButton" type="button" class="secondary" aria-pressed="false">🔍 Auditoría de Intervenciones</button>
+        <button id="finalResultButton" type="button" aria-pressed="true">✨ Resultado Final</button>
+        <button id="auditViewButton" type="button" class="secondary" aria-pressed="false">🔍 Palabras que requieren revisión</button>
       </div>
 
       <div id="auditLegend" class="audit-legend" hidden>
-        <span class="audit-legend-item"><span class="audit-dot dot-llama"></span> 🟣 Llama 3.2 (Corrección Contextual)</span>
-        <span class="audit-legend-item"><span class="audit-dot dot-rules"></span> 🔵 Reglas (Normalización Legal/Formato)</span>
-        <span class="audit-legend-item"><span class="audit-dot dot-shield"></span> 🟡 Blindaje (Campo Sensible Protegido)</span>
+        <span class="audit-legend-item"><span class="audit-dot dot-llama"></span> 🟣 Corrección y Limpieza IA (Llama 3.2)</span>
+        <span class="audit-legend-item"><span class="audit-dot dot-rules"></span> 🔵 Reglas y Normalización Legal</span>
+        <span class="audit-legend-item"><span class="audit-dot dot-shield"></span> 🟡 Blindaje de Seguridad (Preservado)</span>
       </div>
 
-      <p id="printedReviewNotice" class="ocr-note" hidden>Documento procesado integralmente. Pase el cursor sobre los términos subrayados en la vista de Auditoría para ver el antes/después y el autor técnico.</p>
+      <p id="printedReviewNotice" class="ocr-note" hidden>Pase el cursor sobre las palabras subrayadas en la vista de revisión para ver qué se modificó y por qué.</p>
 
       <div id="ocrResultContainer" class="result-container">
         <pre id="ocrResult" class="result"></pre>
         <div id="ocrAuditResult" class="result audit-rendered" hidden></div>
       </div>
-
-      <details id="printedEvidencePanel" class="result-details" hidden>
-        <summary>Palabras que requieren revisión</summary>
-        <p class="ocr-note">Estas detecciones son inciertas. Ninguna se ha eliminado ni corregido automáticamente.</p>
-        <ul id="printedEvidenceList" class="ocr-evidence-list"></ul>
-        <p id="regionalReviewResult" class="ocr-note" role="status" aria-live="polite"></p>
-        <div id="printedImageOverlay" class="printed-image-overlay" hidden>
-          <img id="printedImagePreview" alt="Imagen original con detección seleccionada">
-          <div id="printedBoundingBox" class="printed-bounding-box"></div>
-        </div>
-      </details>
-
-      <section id="aiReviewPanel" class="card ai-panel" hidden>
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Inteligencia semántica Llama 3.2</p>
-            <h2>Análisis documental y sugerencias</h2>
-          </div>
-        </div>
-
-        <div class="ai-doc-header">
-          <span id="aiDocType" class="ai-doc-badge">DOCUMENTO</span>
-          <span id="aiDocIntent" class="ai-doc-intent"></span>
-        </div>
-
-        <div id="aiFieldsSection" hidden>
-          <h3>Campos clave identificados</h3>
-          <div id="aiFieldsList" class="ai-fields-container"></div>
-        </div>
-
-        <div id="aiTelemetryBar" class="ai-telemetry-bar"></div>
-      </section>
-
-      <details
-        id="ocrMetadataDetails"
-        class="result-details"
-      >
-        <summary>
-          Información complementaria
-        </summary>
-
-        <pre
-          id="ocrMetadata"
-          class="result metadata-result"
-        ></pre>
-      </details>
     </section>
 
     <section

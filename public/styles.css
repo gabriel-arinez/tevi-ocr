@@ -817,18 +817,39 @@ button.secondary {
 
 /* 2-View Pipeline & Technological Attribution UI */
 .result-container { position: relative; width: 100%; margin-top: 0.75rem; }
-.audit-rendered {
-  font-family: inherit;
+#ocrResult,
+#ocrAuditResult {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.95rem;
+  line-height: 1.65;
   white-space: pre-wrap;
   word-break: break-word;
-  line-height: 1.7;
-  font-size: 1rem;
   background: #ffffff;
   border: 1px solid #dce2ea;
   border-radius: 8px;
   padding: 1.25rem;
   min-height: 12rem;
   color: #1a202c;
+  margin: 0;
+  box-sizing: border-box;
+  width: 100%;
+}
+.audit-removed-block {
+  margin-bottom: 1rem;
+  padding: 0.6rem 0.85rem;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #64748b;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.audit-removed-label {
+  font-weight: 600;
+  color: #475569;
 }
 .audit-legend {
   display: flex;
@@ -884,9 +905,12 @@ button.secondary {
 
 /* ⚪ Geometric Filter: Noise removal / border artifacts */
 .audit-mark-noise {
-  background: #edf2f7;
-  color: #718096;
+  background: #f1f5f9;
+  color: #94a3b8;
   text-decoration: line-through;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.82rem;
 }
 
 /* Interactive Floating Tooltip */

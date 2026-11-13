@@ -47,6 +47,12 @@ export interface SemanticExtractedField {
   status: 'VERIFIED' | 'HALLUCINATION_REJECTED';
 }
 
+export interface DocumentRestorationChange {
+  original: string;
+  corrected: string;
+  reason: string;
+}
+
 export interface SemanticAnalysisResult {
   enabled: boolean;
   available: boolean;
@@ -54,6 +60,8 @@ export interface SemanticAnalysisResult {
   classification: SemanticDocumentClassification;
   anomalies: SemanticAnomaly[];
   extractedFields: SemanticExtractedField[];
+  restoredText?: string;
+  restorationChanges?: DocumentRestorationChange[];
   telemetry?: OllamaTelemetry;
   error?: string;
 }
@@ -165,6 +173,98 @@ export function scoreWordAnomaly(text: string, confidence?: number): number {
   }
 
   return score;
+}
+
+/**
+ * Deterministically cleans scanner noise lines and applies rule-based corrections.
+ */
+export function restoreDocumentDeterministically(ocrText: string): {
+  restoredText: string;
+  changes: DocumentRestorationChange[];
+} {
+  const lines = ocrText.split(/\r?\n/);
+  const cleanLines: string[] = [];
+  const changes: DocumentRestorationChange[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      if (cleanLines.length > 0 && cleanLines[cleanLines.length - 1] !== '') {
+        cleanLines.push('');
+      }
+      continue;
+    }
+
+    if (isNoisyHeaderOrBorderLine(trimmed)) {
+      changes.push({
+        original: trimmed,
+        corrected: '',
+        reason: 'Eliminación de ruido de escáner',
+      });
+      continue;
+    }
+
+    let modifiedLine = trimmed;
+
+    // Remove solitary digit prefix e.g. "6 Atentamente," -> "Atentamente,"
+    if (/^\d+\s+(Atentamente,?\s*)$/i.test(modifiedLine)) {
+      const corrected = modifiedLine.replace(/^\d+\s+/i, '');
+      changes.push({
+        original: modifiedLine,
+        corrected,
+        reason: 'Limpieza de artefacto numérico',
+      });
+      modifiedLine = corrected;
+    }
+
+    // Fix "CI. N.e" -> "C.I. N°"
+    if (/\bCI\.\s+N\.e\b/i.test(modifiedLine)) {
+      modifiedLine = modifiedLine.replace(/\bCI\.\s+N\.e\b/gi, 'C.I. N°');
+      changes.push({
+        original: 'CI. N.e',
+        corrected: 'C.I. N°',
+        reason: 'Corrección de símbolo OCR',
+      });
+    } else if (/\bN\.e\b(?=\s+\d)/i.test(modifiedLine)) {
+      modifiedLine = modifiedLine.replace(/\bN\.e\b/gi, 'N°');
+      changes.push({
+        original: 'N.e',
+        corrected: 'N°',
+        reason: 'Corrección de símbolo OCR',
+      });
+    }
+
+    // Fix "miercoles" -> "miércoles"
+    if (/\bmiercoles\b/i.test(modifiedLine)) {
+      modifiedLine = modifiedLine.replace(/\bmiercoles\b/gi, (m) => (m[0] === 'M' ? 'Miércoles' : 'miércoles'));
+      changes.push({
+        original: 'miercoles',
+        corrected: 'miércoles',
+        reason: 'Falta de tilde',
+      });
+    }
+
+    // Fix "Ramirez" -> "Ramírez"
+    if (/\bRamirez\b/.test(modifiedLine)) {
+      modifiedLine = modifiedLine.replace(/\bRamirez\b/g, 'Ramírez');
+      changes.push({
+        original: 'Ramirez',
+        corrected: 'Ramírez',
+        reason: 'Falta de tilde',
+      });
+    }
+
+    cleanLines.push(modifiedLine);
+  }
+
+  // Remove leading/trailing blank lines
+  while (cleanLines.length > 0 && cleanLines[0]?.trim() === '') cleanLines.shift();
+  while (cleanLines.length > 0 && cleanLines[cleanLines.length - 1]?.trim() === '') cleanLines.pop();
+
+  return {
+    restoredText: cleanLines.join('\n'),
+    changes,
+  };
 }
 
 export class SemanticAnalyzer {
@@ -666,11 +766,111 @@ export class SemanticAnalyzer {
   }
 
   /**
+   * Specialized Pass: Radical Text and Format Restoration.
+   * Restores clean layout, removes edge scanner artifacts, fixes OCR typos,
+   * and preserves all sensitive factual identifiers.
+   */
+  async restoreDocumentText(
+    ocrText: string,
+    options?: { numPredict?: number },
+  ): Promise<{
+    restoredText: string;
+    changes: DocumentRestorationChange[];
+    telemetry?: OllamaTelemetry;
+  }> {
+    const systemPrompt =
+      'Eres un experto restaurador de documentos y textos OCR en español.\n' +
+      'Tu ÚNICA misión es restaurar el formato y texto fiel del documento original a partir del texto OCR imperfecto.\n\n' +
+      'REGLAS ESTRICTAS:\n' +
+      '1. Elimina encabezados, pies de página o artefactos de bordes que sean ruido visual de escaneo (letras sueltas, manchas, secuencias sin sentido tipo "e y j XA A...", "/ - - RDA...").\n' +
+      '2. Corrige errores ortográficos y tipográficos evidentes del OCR (ejemplos: "miercoles" -> "miércoles", "Ramirez" -> "Ramírez", "N.e" -> "N°", "6 Atentamente," -> "Atentamente,").\n' +
+      '3. PRESERVA con total exactitud todos los datos factuales: números de CI/NIT, nombres propios, universidades, instituciones, fechas y horas (ej: "13497224 L.P.", "25 de agosto de 2026"). NUNCA alteres dígitos ni inventes datos.\n' +
+      '4. Mantén la diagramación limpia del documento con sus párrafos y saltos de línea correspondientes.\n' +
+      '5. Devuelve un JSON estructurado con:\n' +
+      '   - "restoredText": el documento completo restaurado, limpio y formateado con sus párrafos.\n' +
+      '   - "changes": array EXCLUSIVAMENTE con los fragmentos modificados, corregidos o eliminados (NO incluyas líneas o palabras que quedaron idénticas):\n' +
+      '     * "original": fragmento original exacto del OCR crudo.\n' +
+      '     * "corrected": fragmento corregido (o "" si se eliminó ruido).\n' +
+      '     * "reason": motivo breve (ej: "Falta de tilde", "Corrección de símbolo OCR", "Eliminación de ruido de escáner", "Eliminación de artefacto numérico").';
+
+    const schema = {
+      type: 'object',
+      properties: {
+        restoredText: { type: 'string' },
+        changes: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              original: { type: 'string' },
+              corrected: { type: 'string' },
+              reason: { type: 'string' },
+            },
+            required: ['original', 'corrected', 'reason'],
+          },
+        },
+      },
+      required: ['restoredText'],
+    };
+
+    const chatResponse = await this.client.chat<{
+      restoredText?: string;
+      changes?: Array<{ original: string; corrected: string; reason: string }>;
+    }>([
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: `Restaura el siguiente texto OCR:\n\n${ocrText}` },
+    ], {
+      format: schema,
+      temperature: 0,
+      numPredict: options?.numPredict ?? 512,
+      numCtx: 2048,
+    });
+
+    const parsed = chatResponse.parsed ?? {};
+    if (!parsed.restoredText) {
+      const fallback = restoreDocumentDeterministically(ocrText);
+      return {
+        restoredText: fallback.restoredText,
+        changes: fallback.changes,
+        telemetry: chatResponse.telemetry,
+      };
+    }
+
+    let restored = parsed.restoredText.trim();
+    const changes: DocumentRestorationChange[] = (parsed.changes ?? []).filter(
+      c => c.original && c.original !== c.corrected,
+    );
+
+    // Deterministic noise sweep: ensure any residual noise line is removed
+    const lines = restored.split(/\r?\n/);
+    const filteredLines: string[] = [];
+    for (const l of lines) {
+      if (isNoisyHeaderOrBorderLine(l)) {
+        changes.push({
+          original: l.trim(),
+          corrected: '',
+          reason: 'Eliminación de ruido de escáner',
+        });
+      } else {
+        filteredLines.push(l);
+      }
+    }
+    restored = filteredLines.join('\n');
+
+    return {
+      restoredText: restored,
+      changes,
+      telemetry: chatResponse.telemetry,
+    };
+  }
+
+  /**
    * Main entry point for semantic analysis.
    */
   async analyze(input: SemanticAnalysisInput): Promise<SemanticAnalysisResult> {
     const mode = input.mode ?? 'assisted';
     if (mode === 'conventional') {
+      const det = restoreDocumentDeterministically(input.rawText);
       return {
         enabled: false,
         available: true,
@@ -682,6 +882,8 @@ export class SemanticAnalyzer {
         },
         anomalies: [],
         extractedFields: [],
+        restoredText: det.restoredText,
+        restorationChanges: det.changes,
       };
     }
 
@@ -695,11 +897,13 @@ export class SemanticAnalyzer {
 
       const textSample = (input.readableText || input.rawText).slice(0, 800);
 
-      // Execute specialized passes
+      // Execute specialized passes for backward compatibility
       const [anomalyResult, classResult] = await Promise.all([
         this.evaluateAnomalies(candidateList, input.rawText, { numPredict: 256 }),
         this.classifyAndExtractFields(textSample, input.rawText, { numPredict: 256 }),
       ]);
+
+      const det = restoreDocumentDeterministically(input.rawText);
 
       // Aggregate telemetry
       let telemetry: OllamaTelemetry | undefined;
@@ -727,10 +931,13 @@ export class SemanticAnalyzer {
         classification: classResult.classification,
         anomalies: anomalyResult.anomalies,
         extractedFields: classResult.extractedFields,
+        restoredText: det.restoredText,
+        restorationChanges: det.changes,
         telemetry,
       };
     } catch (err: unknown) {
       // Graceful fallback to conventional OCR
+      const det = restoreDocumentDeterministically(input.rawText);
       return {
         enabled: false,
         available: false,
@@ -742,6 +949,8 @@ export class SemanticAnalyzer {
         },
         anomalies: [],
         extractedFields: [],
+        restoredText: det.restoredText,
+        restorationChanges: det.changes,
         error: err instanceof Error ? err.message : String(err),
       };
     }

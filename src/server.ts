@@ -49,7 +49,11 @@ import { prepareRegionForSecondReading } from './ocr/printed-region-review.js';
 import type { PrintedSpatialWord } from './ocr/printed-spatial-evidence.js';
 import { shutdownDefaultWorkerPool } from './ocr/tesseract-worker-pool.js';
 import { getDefaultOllamaClient } from './ai/ollama-client.js';
-import { SemanticAnalyzer, type SemanticAnalysisResult } from './ai/semantic-analyzer.js';
+import {
+  SemanticAnalyzer,
+  restoreDocumentDeterministically,
+  type SemanticAnalysisResult,
+} from './ai/semantic-analyzer.js';
 import { synthesizeDocumentView, type DocumentSynthesisResult } from './ai/document-synthesizer.js';
 
 const app = express();
@@ -487,15 +491,46 @@ app.post(
       const effectiveAiMode: 'conventional' | 'assisted' = isConventional ? 'conventional' : 'assisted';
 
       let aiReview: SemanticAnalysisResult;
+      const targetOcrText = structuredText || combinedRawText;
       if (effectiveAiMode !== 'conventional' && config.ollama.enabled) {
         const analyzer = new SemanticAnalyzer();
-        aiReview = await analyzer.analyze({
-          rawText: combinedRawText,
-          readableText,
-          lowConfidenceWords: allLowConfidenceWords,
-          mode: 'assisted',
-        });
+        try {
+          const restoration = await analyzer.restoreDocumentText(targetOcrText);
+          aiReview = {
+            enabled: true,
+            available: true,
+            executionMode: 'assisted',
+            classification: {
+              documentType: 'OTRO',
+              documentIntent: 'Restauración integral de formato y texto',
+              confidence: 1.0,
+            },
+            anomalies: [],
+            extractedFields: [],
+            restoredText: restoration.restoredText,
+            restorationChanges: restoration.changes,
+            telemetry: restoration.telemetry,
+          };
+        } catch (err: unknown) {
+          const det = restoreDocumentDeterministically(targetOcrText);
+          aiReview = {
+            enabled: false,
+            available: false,
+            executionMode: 'assisted',
+            classification: {
+              documentType: 'OTRO',
+              documentIntent: 'Fallback seguro a restauración por reglas',
+              confidence: 0,
+            },
+            anomalies: [],
+            extractedFields: [],
+            restoredText: det.restoredText,
+            restorationChanges: det.changes,
+            error: err instanceof Error ? err.message : String(err),
+          };
+        }
       } else {
+        const det = restoreDocumentDeterministically(targetOcrText);
         aiReview = {
           enabled: false,
           available: true,
@@ -507,12 +542,16 @@ app.post(
           },
           anomalies: [],
           extractedFields: [],
+          restoredText: det.restoredText,
+          restorationChanges: det.changes,
         };
       }
 
       // Synthesize final polished document and technological audit view
       const documentSynthesis: DocumentSynthesisResult = synthesizeDocumentView({
         baseStructuredText: structuredText,
+        restoredText: aiReview.restoredText,
+        changes: aiReview.restorationChanges,
         anomalies: aiReview.anomalies,
         extractedFields: aiReview.extractedFields,
         mode: effectiveAiMode,

@@ -343,6 +343,7 @@ const printedReviewNotice = document.getElementById('printedReviewNotice');
 const printedEvidencePanel = document.getElementById('printedEvidencePanel');
 const printedEvidenceList = document.getElementById('printedEvidenceList');
 function renderPrintedEvidence(pages) {
+  if (!printedEvidenceList || !printedEvidencePanel) return;
   printedEvidenceList.replaceChildren();
   const suspicious = (pages ?? []).flatMap(page => (
     page.spatialEvidence?.lowConfidenceWords ?? []
@@ -443,17 +444,14 @@ for (
 
       result.textContent =
         '';
-      printedTextControls.hidden = true;
-      printedReviewNotice.hidden = true;
-      printedEvidencePanel.hidden = true;
+      if (printedTextControls) printedTextControls.hidden = true;
+      if (printedReviewNotice) printedReviewNotice.hidden = true;
+      if (printedEvidencePanel) printedEvidencePanel.hidden = true;
       lastPrintedFile = null;
       revokePrintedImagePreview();
 
-      metadataResult.textContent =
-        '';
-
-      metadataDetails.open =
-        false;
+      if (metadataResult) metadataResult.textContent = '';
+      if (metadataDetails) metadataDetails.open = false;
 
       clearHandwritingReview();
 
@@ -843,18 +841,15 @@ async function submitOcr(
   );
 
   result.textContent = '';
-  printedTextControls.hidden = true;
-  printedReviewNotice.hidden = true;
-  printedEvidencePanel.hidden = true;
+  if (printedTextControls) printedTextControls.hidden = true;
+  if (printedReviewNotice) printedReviewNotice.hidden = true;
+  if (printedEvidencePanel) printedEvidencePanel.hidden = true;
   lastPrintedFile = null;
   revokePrintedImagePreview();
   clearAiReview();
 
-  metadataResult.textContent =
-    '';
-
-  metadataDetails.open =
-    false;
+  if (metadataResult) metadataResult.textContent = '';
+  if (metadataDetails) metadataDetails.open = false;
 
   clearHandwritingReview();
 
@@ -921,11 +916,11 @@ async function submitOcr(
     renderPrintedEvidence(payload.ocr.pages);
   } else {
     result.textContent = payload.ocr.text;
-    printedTextControls.hidden = true;
-    printedReviewNotice.hidden = true;
-    printedEvidencePanel.hidden = true;
-    auditLegend.hidden = true;
-    ocrAuditResult.hidden = true;
+    if (printedTextControls) printedTextControls.hidden = true;
+    if (printedReviewNotice) printedReviewNotice.hidden = true;
+    if (printedEvidencePanel) printedEvidencePanel.hidden = true;
+    if (auditLegend) auditLegend.hidden = true;
+    if (ocrAuditResult) ocrAuditResult.hidden = true;
     revokePrintedImagePreview();
   }
 
@@ -942,14 +937,16 @@ async function submitOcr(
     renderAiReview(payload.ocr.aiReview);
   }
 
-  metadataResult.textContent = [
-    `Origen: ${payload.document.source}`,
-    `Formato: ${payload.document.kind}`,
-    `Modo: ${mode}`,
-    `Motor: ${engine}`,
-    `Confianza: ${confidence}`,
-    `Calidad: ${quality}`,
-  ].join('\n');
+  if (metadataResult) {
+    metadataResult.textContent = [
+      `Origen: ${payload.document.source}`,
+      `Formato: ${payload.document.kind}`,
+      `Modo: ${mode}`,
+      `Motor: ${engine}`,
+      `Confianza: ${confidence}`,
+      `Calidad: ${quality}`,
+    ].join('\n');
+  }
 
   if (
     payload.ocr.mode ===

@@ -88,4 +88,57 @@ describe('DocumentSynthesizer', () => {
     assert.equal(llamaInterventions.length, 0);
     assert.ok(result.finalText.includes('revlsión'), 'revlsión no debe modificarse en modo convencional');
   });
+
+  it('restaura texto completo, depura ruido de bordes y resalta cambios con tipografía idéntica', () => {
+    const rawOcr = [
+      'e y j XA A YN / N ON /',
+      '/ - - RDA — o];',
+      'La Paz, 25 de agosto de 2026',
+      'AUTORIZACIÓN DE PERMISO',
+      'Por medio de la presente con CI. N.e 13497224 L.P.',
+      'el día miercoles 26 de agosto.',
+      'Nombre: Fidel Eliseo Reyes Ramirez',
+      '6 Atentamente,',
+    ].join('\n');
+
+    const restoredOcr = [
+      'La Paz, 25 de agosto de 2026',
+      'AUTORIZACIÓN DE PERMISO',
+      'Por medio de la presente con C.I. N° 13497224 L.P.',
+      'el día miércoles 26 de agosto.',
+      'Nombre: Fidel Eliseo Reyes Ramírez',
+      'Atentamente,',
+    ].join('\n');
+
+    const result = synthesizeDocumentView({
+      baseStructuredText: rawOcr,
+      restoredText: restoredOcr,
+      changes: [
+        { original: 'e y j XA A YN / N ON /', corrected: '', reason: 'Eliminación de ruido de escáner' },
+        { original: '/ - - RDA — o];', corrected: '', reason: 'Eliminación de ruido de escáner' },
+        { original: 'CI. N.e', corrected: 'C.I. N°', reason: 'Corrección de símbolo OCR' },
+        { original: 'miercoles', corrected: 'miércoles', reason: 'Falta de tilde' },
+        { original: 'Ramirez', corrected: 'Ramírez', reason: 'Falta de tilde' },
+        { original: '6 Atentamente,', corrected: 'Atentamente,', reason: 'Limpieza de artefacto numérico' },
+      ],
+      mode: 'assisted',
+    });
+
+    // 1. Final text is clean, with noise headers and "6 " removed
+    assert.ok(!result.finalText.includes('e y j XA A YN'));
+    assert.ok(!result.finalText.includes('RDA — o];'));
+    assert.ok(!result.finalText.includes('6 Atentamente'));
+    assert.ok(result.finalText.includes('miércoles'));
+    assert.ok(result.finalText.includes('Ramírez'));
+    assert.ok(result.finalText.includes('13497224 L.P.'));
+
+    // 2. Interventions record all changes
+    assert.ok(result.interventions.some(i => i.original === 'miercoles' && i.replacement === 'miércoles'));
+    assert.ok(result.interventions.some(i => i.category === 'NOISE_REMOVAL'));
+
+    // 3. Annotated HTML has noise deletion header and underlines for corrected words
+    assert.ok(result.annotatedHtml.includes('audit-removed-block'));
+    assert.ok(result.annotatedHtml.includes('audit-mark-llama'));
+    assert.ok(result.annotatedHtml.includes('miércoles'));
+  });
 });

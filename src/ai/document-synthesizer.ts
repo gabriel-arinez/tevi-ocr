@@ -1,5 +1,10 @@
 import { extractStructuredFields } from '../ocr/structured-field-extractor.js';
-import type { SemanticAnomaly, SemanticExtractedField } from './semantic-analyzer.js';
+import {
+  isNoisyHeaderOrBorderLine,
+  type SemanticAnomaly,
+  type SemanticExtractedField,
+  type DocumentRestorationChange,
+} from './semantic-analyzer.js';
 
 export type InterventionAuthor =
   | 'LLAMA_3_2'
@@ -59,12 +64,20 @@ function escapeRegex(str: string): string {
  * Synthesizes the final polished document and builds the interactive annotated view
  * with explicit technological attribution.
  */
-export function synthesizeDocumentView(input: {
+export interface DocumentSynthesisInput {
   baseStructuredText: string;
+  restoredText?: string;
+  changes?: DocumentRestorationChange[];
   anomalies?: SemanticAnomaly[];
   extractedFields?: SemanticExtractedField[];
   mode?: 'conventional' | 'assisted' | 'deep';
-}): DocumentSynthesisResult {
+}
+
+/**
+ * Synthesizes the final polished document and builds the interactive annotated view
+ * with explicit technological attribution.
+ */
+export function synthesizeDocumentView(input: DocumentSynthesisInput): DocumentSynthesisResult {
   const interventions: DocumentIntervention[] = [];
   let counter = 1;
 
@@ -118,9 +131,39 @@ export function synthesizeDocumentView(input: {
     }
   }
 
-  // 2. Collect Llama 3.2 Contextual Corrections and Shield Events (if not conventional)
+  // 2. Incorporate explicit changes from restoration pass (if available)
+  if (input.mode !== 'conventional' && input.changes && input.changes.length > 0) {
+    for (const ch of input.changes) {
+      if (!ch.original) continue;
+      const isNoise = !ch.corrected || ch.corrected.trim() === '';
+      const intervention: DocumentIntervention = {
+        id: `int-llama-${counter++}`,
+        original: ch.original,
+        replacement: ch.corrected,
+        author: 'LLAMA_3_2',
+        authorLabel: 'Llama 3.2 (IA)',
+        category: isNoise ? 'NOISE_REMOVAL' : 'TYPO_CORRECTION',
+        categoryLabel: isNoise ? 'Eliminación de Ruido' : 'Corrección Ortográfica/OCR',
+        reason: ch.reason || (isNoise ? 'Artefacto de escáner eliminado' : 'Corrección contextual asistida'),
+        details: isNoise ? 'Línea o fragmento inconexo depurado del resultado final.' : 'Palabra restaurada fielmente al original.',
+      };
+      interventions.push(intervention);
+      if (!isNoise) {
+        appliedReplacements.push({
+          target: ch.original,
+          replacement: ch.corrected,
+          intervention,
+        });
+      }
+    }
+  }
+
+  // 3. Incorporate Llama 3.2 Contextual Corrections from anomalies list (if not already recorded)
   if (input.mode !== 'conventional' && input.anomalies && input.anomalies.length > 0) {
     for (const anom of input.anomalies) {
+      const alreadyPresent = interventions.some(i => i.original === anom.originalText);
+      if (alreadyPresent) continue;
+
       if (anom.status === 'SUGGESTED' && anom.suggestedAlternative !== anom.originalText) {
         const intervention: DocumentIntervention = {
           id: `int-llama-${counter++}`,
@@ -156,25 +199,80 @@ export function synthesizeDocumentView(input: {
     }
   }
 
-  // 3. Build the Polished Final Text
-  let finalText = input.baseStructuredText;
-  for (const rep of appliedReplacements) {
-    if (rep.target && rep.replacement && rep.target !== rep.replacement) {
-      const regex = new RegExp(`(?<=\\b|\\s|^)${escapeRegex(rep.target)}(?=\\b|\\s|[.,;:]|$)`, 'g');
-      finalText = finalText.replace(regex, rep.replacement);
+  // 4. Determine Polished Final Text
+  let finalText: string;
+  if (input.mode !== 'conventional' && input.restoredText && input.restoredText.trim().length > 0) {
+    // Filter any stray residual noise lines
+    finalText = input.restoredText
+      .split(/\r?\n/)
+      .filter(l => !isNoisyHeaderOrBorderLine(l))
+      .join('\n')
+      .trim();
+  } else {
+    finalText = input.baseStructuredText;
+    for (const rep of appliedReplacements) {
+      if (rep.target && rep.replacement && rep.target !== rep.replacement) {
+        const regex = new RegExp(`(?<=\\b|\\s|^)${escapeRegex(rep.target)}(?=\\b|\\s|[.,;:]|$)`, 'g');
+        finalText = finalText.replace(regex, rep.replacement);
+      }
+    }
+    // Also clean border noise lines if conventional or fallback
+    finalText = finalText
+      .split(/\r?\n/)
+      .filter(l => !isNoisyHeaderOrBorderLine(l))
+      .join('\n')
+      .trim();
+  }
+
+  // Detect any border noise line from original text that was removed
+  const originalLines = input.baseStructuredText.split(/\r?\n/);
+  for (const line of originalLines) {
+    const trimmed = line.trim();
+    if (trimmed && isNoisyHeaderOrBorderLine(trimmed)) {
+      if (!interventions.some(i => i.original === trimmed)) {
+        interventions.unshift({
+          id: `int-noise-${counter++}`,
+          original: trimmed,
+          replacement: '',
+          author: 'LLAMA_3_2',
+          authorLabel: 'Llama 3.2 (IA)',
+          category: 'NOISE_REMOVAL',
+          categoryLabel: 'Eliminación de Ruido',
+          reason: 'Ruido visual de escaneo depurado',
+          details: 'Línea de borde o artefacto descartado del resultado final.',
+        });
+      }
     }
   }
 
-  // 4. Build the Interactive Annotated HTML for the Audit View
+  // 5. Build the Interactive Annotated HTML for the Review View
   let annotatedHtml = escapeHtml(finalText);
 
-  // Mark all interventions in the text
-  for (const intv of interventions) {
+  // Group noise removals to show in a header notice if present
+  const noiseRemovals = interventions.filter(i => i.category === 'NOISE_REMOVAL' && i.original.trim().length > 0);
+  let noiseHeaderHtml = '';
+  if (noiseRemovals.length > 0) {
+    const noiseBadges = noiseRemovals
+      .map(n => `<del class="audit-mark-noise" title="Eliminado por ruido de escáner: ${escapeHtml(n.original)}">${escapeHtml(n.original)}</del>`)
+      .join(' ');
+    noiseHeaderHtml = `<div class="audit-removed-block"><span class="audit-removed-label">🗑️ Ruido de escaneo eliminado:</span> ${noiseBadges}</div>\n\n`;
+  }
+
+  // Sort interventions by word length descending so longer phrases match first
+  const activeInterventions = interventions.filter(i => i.category !== 'NOISE_REMOVAL');
+  activeInterventions.sort((a, b) => {
+    const lenA = (a.replacement || a.original).length;
+    const lenB = (b.replacement || b.original).length;
+    return lenB - lenA;
+  });
+
+  for (const intv of activeInterventions) {
     const wordToHighlight = (intv.replacement && intv.replacement.trim()) ? intv.replacement.trim() : intv.original.trim();
     if (!wordToHighlight || wordToHighlight.length < 2) continue;
 
     const escapedWord = escapeHtml(wordToHighlight);
-    const regex = new RegExp(`(?<=\\b|\\s|^|>)${escapeRegex(escapedWord)}(?=\\b|\\s|[.,;:]|$|<)`, 'g');
+    // Matches word outside already existing HTML tags
+    const regex = new RegExp(`(?<!<[^>]*)(?<=[\\s,.:;()"]|^)${escapeRegex(escapedWord)}(?=[\\s,.:;()"]|$)(?![^<]*>)`, 'g');
 
     const badgeClass =
       intv.author === 'LLAMA_3_2'
@@ -187,21 +285,24 @@ export function synthesizeDocumentView(input: {
 
     const authorTooltip = escapeHtml(`${intv.authorLabel} [${intv.categoryLabel}]`);
     const reasonTooltip = escapeHtml(`Original: "${intv.original}" → Motivo: ${intv.reason}`);
+    const fullTooltip = `${authorTooltip} • ${reasonTooltip}`;
 
     annotatedHtml = annotatedHtml.replace(regex, (match) => {
-      return `<mark class="audit-mark ${badgeClass}" data-author="${escapeHtml(intv.author)}" data-original="${escapeHtml(intv.original)}" data-replacement="${escapeHtml(intv.replacement)}" data-title="${authorTooltip}" data-reason="${reasonTooltip}" tabindex="0">${match}</mark>`;
+      return `<mark class="audit-mark ${badgeClass}" data-author="${escapeHtml(intv.author)}" data-original="${escapeHtml(intv.original)}" data-replacement="${escapeHtml(intv.replacement)}" data-title="${authorTooltip}" data-reason="${reasonTooltip}" title="${fullTooltip}" tabindex="0">${match}</mark>`;
     });
   }
+
+  annotatedHtml = noiseHeaderHtml + annotatedHtml;
 
   return {
     finalText,
     annotatedHtml,
     interventions,
     stats: {
-      llamaCorrections: interventions.filter(i => i.author === 'LLAMA_3_2').length,
+      llamaCorrections: interventions.filter(i => i.author === 'LLAMA_3_2' && i.category !== 'NOISE_REMOVAL').length,
       ruleNormalizations: interventions.filter(i => i.author === 'DETERMINISTIC_RULES').length,
       protectedShields: interventions.filter(i => i.author === 'SECURITY_SHIELD').length,
-      noiseRemovals: interventions.filter(i => i.author === 'GEOMETRIC_FILTER').length,
+      noiseRemovals: interventions.filter(i => i.category === 'NOISE_REMOVAL').length,
       total: interventions.length,
     },
   };
