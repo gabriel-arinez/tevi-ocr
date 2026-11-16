@@ -1,6 +1,10 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { synthesizeDocumentView } from '../../src/ai/document-synthesizer.js';
+import {
+  restoreDocumentDeterministically,
+  computeWordDiffChanges,
+} from '../../src/ai/semantic-analyzer.js';
 
 describe('DocumentSynthesizer', () => {
   it('aplica normalizaciones deterministas y correcciones de Llama con atribución explícita', () => {
@@ -176,5 +180,39 @@ describe('DocumentSynthesizer', () => {
     assert.ok(!result.annotatedHtml.includes('audit-mark-llama'));
     assert.ok(result.annotatedHtml.includes('audit-orig-deleted'));
     assert.ok(result.annotatedHtml.includes('data-author="DETERMINISTIC_RULES"'));
+  });
+
+  it('normaliza homógrafos, etiquetas, montos y fechas OCR en manuscrito sin pintar blindaje en campos sin cambios', () => {
+    const rawHandwritten = [
+      'Solicito vcripicar la documentacioń presentada',
+      'Nıt: 4587123014',
+      'Códiо: TV-125-2026',
+      'Monto Bs. 8. S05, 10',
+      'Fecha: 1S/09/26',
+    ].join('\n');
+
+    const det = restoreDocumentDeterministically(rawHandwritten);
+    assert.ok(det.restoredText.includes('documentación'));
+    assert.ok(det.restoredText.includes('NIT: 4587123014'));
+    assert.ok(det.restoredText.includes('Código: TV-125-2026'));
+    assert.ok(det.restoredText.includes('Monto Bs. 8.505,10'));
+    assert.ok(det.restoredText.includes('Fecha: 15/09/26'));
+
+    const llmText = det.restoredText.replace('vcripicar', 'verificar');
+    const llmChanges = computeWordDiffChanges(det.restoredText, llmText);
+    assert.equal(llmChanges.length, 1);
+    assert.equal(llmChanges[0]?.original, 'vcripicar');
+    assert.equal(llmChanges[0]?.corrected, 'verificar');
+
+    const syn = synthesizeDocumentView({
+      baseStructuredText: rawHandwritten,
+      restoredText: llmText,
+      changes: [...det.changes, ...llmChanges],
+      mode: 'assisted',
+    });
+
+    assert.ok(syn.annotatedHtml.includes('audit-mark-rules'));
+    assert.ok(syn.annotatedHtml.includes('audit-mark-llama'));
+    assert.ok(!syn.annotatedHtml.includes('audit-mark-shield'), 'Campos no alterados no deben pintarse como blindaje');
   });
 });

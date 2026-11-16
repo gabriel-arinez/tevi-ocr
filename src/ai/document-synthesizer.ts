@@ -113,63 +113,36 @@ export function synthesizeDocumentView(input: DocumentSynthesisInput): DocumentS
         replacement: f.resolved,
         intervention,
       });
-    } else if (f.status === 'UNCHANGED' || f.status === 'AMBIGUOUS' || f.status === 'INVALID') {
-      // Record security shield preserving sensitive field
-      if (f.raw && f.raw.length >= 3) {
-        interventions.push({
-          id: `int-shield-${counter++}`,
-          original: f.raw,
-          replacement: f.raw,
-          author: 'SECURITY_SHIELD',
-          authorLabel: 'Blindaje de Seguridad',
-          category: 'PROTECTED_FIELD',
-          categoryLabel: 'Campo Sensible Protegido',
-          reason: `Campo ${f.fieldType} reservado sin modificación (${f.status})`,
-          details: `El sistema previene alteraciones no autorizadas en datos numéricos y contractuales.`,
-        });
-      }
-    }
-  }
-
-  // Also detect C.I. numbers to protect with security shield
-  const ciMatches = input.baseStructuredText.matchAll(/\b(?:C\.?I\.?|Cédula(?:\s+de\s+identidad)?)\s*(?:N[°º.e]+)?\s*([0-9]{5,9}(?:\s+[A-Z]{1,3}\.?)?)/gi);
-  for (const m of ciMatches) {
-    const rawVal = m[1]?.trim();
-    if (rawVal && rawVal.length >= 4 && !interventions.some(i => i.original === rawVal)) {
-      interventions.push({
-        id: `int-shield-${counter++}`,
-        original: rawVal,
-        replacement: rawVal,
-        author: 'SECURITY_SHIELD',
-        authorLabel: 'Blindaje de Seguridad',
-        category: 'PROTECTED_FIELD',
-        categoryLabel: 'Campo Sensible Protegido',
-        reason: 'Cédula de identidad preservada sin modificación',
-        details: 'El sistema previene alteraciones en datos de identificación personal.',
-      });
     }
   }
 
   // 2. Incorporate explicit changes from restoration pass (rules or LLM)
   if (input.changes && input.changes.length > 0) {
     const isConventional = input.mode === 'conventional';
-    const author: InterventionAuthor = isConventional ? 'DETERMINISTIC_RULES' : 'LLAMA_3_2';
-    const authorLabel = isConventional ? 'Reglas Deterministas' : 'Llama 3.2 (IA)';
-    const categoryLabel = isConventional ? 'Regla Determinista' : 'Corrección Ortográfica/OCR';
 
     for (const ch of input.changes) {
       if (!ch.original) continue;
+      const resolvedAuthor: InterventionAuthor =
+        ch.author ?? (isConventional ? 'DETERMINISTIC_RULES' : 'LLAMA_3_2');
+      const isRule = resolvedAuthor === 'DETERMINISTIC_RULES';
+      const authorLabel = isRule ? 'Reglas Deterministas' : 'Llama 3.2 (IA)';
+      const categoryLabel = isRule ? 'Regla Determinista' : 'Corrección Ortográfica/OCR';
       const isNoise = !ch.corrected || ch.corrected.trim() === '';
+
+      if (interventions.some(i => i.original === ch.original && i.replacement === ch.corrected)) {
+        continue;
+      }
+
       const intervention: DocumentIntervention = {
-        id: `int-${isConventional ? 'rule' : 'llama'}-${counter++}`,
+        id: `int-${isRule ? 'rule' : 'llama'}-${counter++}`,
         original: ch.original,
         replacement: ch.corrected,
-        author,
+        author: resolvedAuthor,
         authorLabel,
-        category: isNoise ? 'NOISE_REMOVAL' : (isConventional ? 'FORMAT_NORMALIZATION' : 'TYPO_CORRECTION'),
+        category: isNoise ? 'NOISE_REMOVAL' : (isRule ? 'FORMAT_NORMALIZATION' : 'TYPO_CORRECTION'),
         categoryLabel: isNoise ? 'Eliminación de Ruido' : categoryLabel,
         reason: ch.reason || (isNoise ? 'Artefacto de escáner eliminado' : 'Normalización determinista'),
-        details: isNoise ? 'Línea o fragmento inconexo depurado del resultado final.' : (isConventional ? 'Palabra corregida por reglas fijas sin IA.' : 'Palabra restaurada fielmente al original.'),
+        details: isNoise ? 'Línea o fragmento inconexo depurado del resultado final.' : (isRule ? 'Palabra corregida por reglas fijas sin IA.' : 'Palabra restaurada fielmente al original.'),
       };
       interventions.push(intervention);
       if (!isNoise) {

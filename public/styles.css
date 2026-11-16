@@ -862,6 +862,9 @@ button.secondary {
   margin: 0.6rem 0;
   font-size: 0.82rem;
 }
+.audit-legend[hidden] {
+  display: none;
+}
 .audit-legend-item { display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 500; }
 .audit-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 .dot-orig { background: #b91c1c; }

@@ -71,11 +71,12 @@ async function restoreAndSynthesizeText(
   const isConventional = requestedAiMode === 'conventional' || requestedAiMode === 'none';
   const effectiveAiMode: 'conventional' | 'assisted' = isConventional ? 'conventional' : 'assisted';
 
+  const det = restoreDocumentDeterministically(targetOcrText);
   let aiReview: SemanticAnalysisResult;
   if (effectiveAiMode !== 'conventional' && config.ollama.enabled) {
     const analyzer = new SemanticAnalyzer();
     try {
-      const restoration = await analyzer.restoreDocumentText(targetOcrText);
+      const restoration = await analyzer.restoreDocumentText(det.restoredText);
       aiReview = {
         enabled: true,
         available: true,
@@ -88,11 +89,10 @@ async function restoreAndSynthesizeText(
         anomalies: [],
         extractedFields: [],
         restoredText: restoration.restoredText,
-        restorationChanges: restoration.changes,
+        restorationChanges: [...det.changes, ...restoration.changes],
         telemetry: restoration.telemetry,
       };
     } catch (err: unknown) {
-      const det = restoreDocumentDeterministically(targetOcrText);
       aiReview = {
         enabled: false,
         available: false,
@@ -110,7 +110,6 @@ async function restoreAndSynthesizeText(
       };
     }
   } else {
-    const det = restoreDocumentDeterministically(targetOcrText);
     aiReview = {
       enabled: false,
       available: true,

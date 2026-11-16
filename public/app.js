@@ -972,12 +972,16 @@ async function submitOcr(
     ].join('\n');
   }
 
-  setStatus(
-    payload.ocr.quality
-      ?.requiresReview
-      ? 'OCR completado. El resultado requiere revisión.'
-      : 'OCR completado correctamente.',
-  );
+  if (selectedAiMode === 'assisted' && payload.ocr.aiReview?.error) {
+    setStatus(`OCR completado con reglas locales (Llama 3.2 no respondió: ${payload.ocr.aiReview.error}).`);
+  } else {
+    setStatus(
+      payload.ocr.quality
+        ?.requiresReview
+        ? 'OCR completado. El resultado requiere revisión.'
+        : 'OCR completado correctamente.',
+    );
+  }
 }
 
 async function startCamera() {

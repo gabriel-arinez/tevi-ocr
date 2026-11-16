@@ -51,6 +51,7 @@ export interface DocumentRestorationChange {
   original: string;
   corrected: string;
   reason: string;
+  author?: 'LLAMA_3_2' | 'DETERMINISTIC_RULES';
 }
 
 export interface SemanticAnalysisResult {
@@ -175,6 +176,155 @@ export function scoreWordAnomaly(text: string, confidence?: number): number {
   return score;
 }
 
+const OCR_HOMOGRAPH_MAP: Record<string, string> = {
+  '\u0131': 'i', // dotless i (ı)
+  '\u043e': 'o', // Cyrillic o (о)
+  '\u041e': 'O',
+  '\u0430': 'a', // Cyrillic a (а)
+  '\u0435': 'e', // Cyrillic e (е)
+  '\u0441': 'c', // Cyrillic c (с)
+  '\u0440': 'p', // Cyrillic p (р)
+};
+
+function fixOcrNumericConfusions(raw: string): string {
+  return raw
+    .replace(/[Ss]/g, '5')
+    .replace(/[Oo]/g, '0')
+    .replace(/[Il]/g, '1');
+}
+
+function normalizeTokenHomographs(token: string): string {
+  let normalized = token.replace(/[\u0131\u043e\u041e\u0430\u0435\u0441\u0440]/g, ch => OCR_HOMOGRAPH_MAP[ch] ?? ch);
+  // Fix misplaced acute accent on trailing n in Spanish words, e.g. "documentacioń" -> "documentación"
+  normalized = normalized.replace(/([aeiouAEIOU])ń(?=[.,;:!?)]*$)/g, (_, v: string) => {
+    const map: Record<string, string> = {
+      a: 'án', e: 'én', i: 'ín', o: 'ón', u: 'ún',
+      A: 'ÁN', E: 'ÉN', I: 'ÍN', O: 'ÓN', U: 'ÚN',
+    };
+    return map[v] ?? `${v}n`;
+  });
+  return normalized;
+}
+
+/**
+ * Computes word-level diff changes between two texts aligned by line.
+ */
+export function computeWordDiffChanges(
+  originalText: string,
+  restoredText: string,
+  llmHints?: DocumentRestorationChange[],
+): DocumentRestorationChange[] {
+  const hintReasonByWord = new Map<string, string>();
+  for (const h of llmHints ?? []) {
+    if (h.corrected && h.reason) {
+      hintReasonByWord.set(h.corrected.trim(), h.reason);
+      for (const tok of h.corrected.trim().split(/\s+/)) {
+        if (!hintReasonByWord.has(tok)) {
+          hintReasonByWord.set(tok, h.reason);
+        }
+      }
+    }
+  }
+
+  const origLines = originalText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const restLines = restoredText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const changes: DocumentRestorationChange[] = [];
+
+  if (origLines.length !== restLines.length) {
+    // Fallback to whole-document token alignment if line count changed
+    const origTokens = originalText.trim().split(/\s+/).filter(Boolean);
+    const restTokens = restoredText.trim().split(/\s+/).filter(Boolean);
+    return diffTokenArrays(origTokens, restTokens, hintReasonByWord);
+  }
+
+  for (let i = 0; i < origLines.length; i++) {
+    const oLine = origLines[i] ?? '';
+    const rLine = restLines[i] ?? '';
+    if (oLine === rLine) continue;
+    const oTokens = oLine.split(/\s+/).filter(Boolean);
+    const rTokens = rLine.split(/\s+/).filter(Boolean);
+    changes.push(...diffTokenArrays(oTokens, rTokens, hintReasonByWord));
+  }
+
+  return changes;
+}
+
+function diffTokenArrays(
+  origTokens: string[],
+  restTokens: string[],
+  reasonMap: Map<string, string>,
+): DocumentRestorationChange[] {
+  const m = origTokens.length;
+  const n = restTokens.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, () => Array<number>(n + 1).fill(0));
+
+  for (let i = m - 1; i >= 0; i--) {
+    for (let j = n - 1; j >= 0; j--) {
+      if (origTokens[i] === restTokens[j]) {
+        dp[i]![j] = 1 + (dp[i + 1]?.[j + 1] ?? 0);
+      } else {
+        dp[i]![j] = Math.max(dp[i + 1]?.[j] ?? 0, dp[i]?.[j + 1] ?? 0);
+      }
+    }
+  }
+
+  const changes: DocumentRestorationChange[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < m || j < n) {
+    if (i < m && j < n && origTokens[i] === restTokens[j]) {
+      i++;
+      j++;
+      continue;
+    }
+
+    // Collect contiguous mismatch span until next LCS match
+    const origSpan: string[] = [];
+    const restSpan: string[] = [];
+    while (
+      (i < m || j < n) &&
+      !(i < m && j < n && origTokens[i] === restTokens[j])
+    ) {
+      if (i < m && (j >= n || (dp[i + 1]?.[j] ?? 0) >= (dp[i]?.[j + 1] ?? 0))) {
+        origSpan.push(origTokens[i]!);
+        i++;
+      } else if (j < n) {
+        restSpan.push(restTokens[j]!);
+        j++;
+      }
+    }
+
+    if (origSpan.length > 0 && restSpan.length > 0) {
+      // Pair 1-to-1 when lengths match so each word gets its own highlight
+      if (origSpan.length === restSpan.length) {
+        for (let k = 0; k < origSpan.length; k++) {
+          const orig = origSpan[k]!;
+          const corr = restSpan[k]!;
+          if (orig !== corr) {
+            changes.push({
+              original: orig,
+              corrected: corr,
+              reason: reasonMap.get(corr) ?? 'Corrección contextual OCR (Llama 3.2)',
+              author: 'LLAMA_3_2',
+            });
+          }
+        }
+      } else {
+        const origPhrase = origSpan.join(' ');
+        const corrPhrase = restSpan.join(' ');
+        changes.push({
+          original: origPhrase,
+          corrected: corrPhrase,
+          reason: reasonMap.get(corrPhrase) ?? 'Corrección contextual OCR (Llama 3.2)',
+          author: 'LLAMA_3_2',
+        });
+      }
+    }
+  }
+
+  return changes;
+}
+
 /**
  * Deterministically cleans scanner noise lines and applies rule-based corrections.
  */
@@ -200,30 +350,73 @@ export function restoreDocumentDeterministically(ocrText: string): {
         original: trimmed,
         corrected: '',
         reason: 'Eliminación de ruido de escáner',
+        author: 'DETERMINISTIC_RULES',
       });
       continue;
     }
 
     let modifiedLine = trimmed;
 
-    // Remove solitary digit prefix e.g. "6 Atentamente," -> "Atentamente,"
+    // 1. Word-level Unicode homograph and Spanish "-ción" accent cleanup
+    const tokens = modifiedLine.split(/(\s+)/);
+    modifiedLine = tokens.map((tok) => {
+      if (/^\s+$/.test(tok)) return tok;
+      const fixed = normalizeTokenHomographs(tok);
+      if (fixed !== tok) {
+        changes.push({
+          original: tok,
+          corrected: fixed,
+          reason: 'Normalización de carácter homógrafo / tilde OCR',
+          author: 'DETERMINISTIC_RULES',
+        });
+      }
+      return fixed;
+    }).join('');
+
+    // 2. Remove solitary digit prefix e.g. "6 Atentamente," -> "Atentamente,"
     if (/^\d+\s+(Atentamente,?\s*)$/i.test(modifiedLine)) {
       const corrected = modifiedLine.replace(/^\d+\s+/i, '');
       changes.push({
         original: modifiedLine,
         corrected,
         reason: 'Limpieza de artefacto numérico',
+        author: 'DETERMINISTIC_RULES',
       });
       modifiedLine = corrected;
     }
 
-    // Fix "CI. N.e" -> "C.I. N°"
+    // 3. Label normalizations: "Nit:" -> "NIT:", "Codio:" / "Código:" -> "Código:", "CI. N.e" -> "C.I. N°"
+    modifiedLine = modifiedLine.replace(/\bNit:/gi, (m) => {
+      if (m !== 'NIT:') {
+        changes.push({
+          original: m,
+          corrected: 'NIT:',
+          reason: 'Normalización de etiqueta NIT',
+          author: 'DETERMINISTIC_RULES',
+        });
+      }
+      return 'NIT:';
+    });
+
+    modifiedLine = modifiedLine.replace(/\bC[oó]di[o0]?:/gi, (m) => {
+      if (m !== 'Código:') {
+        changes.push({
+          original: m,
+          corrected: 'Código:',
+          reason: 'Normalización de etiqueta Código',
+          author: 'DETERMINISTIC_RULES',
+        });
+      }
+      return 'Código:';
+    });
+
     if (/\bCI\.\s+N\.e\b/i.test(modifiedLine)) {
       modifiedLine = modifiedLine.replace(/\bCI\.\s+N\.e\b/gi, 'C.I. N°');
       changes.push({
         original: 'CI. N.e',
         corrected: 'C.I. N°',
         reason: 'Corrección de símbolo OCR',
+        author: 'DETERMINISTIC_RULES',
       });
     } else if (/\bN\.e\b(?=\s+\d)/i.test(modifiedLine)) {
       modifiedLine = modifiedLine.replace(/\bN\.e\b/gi, 'N°');
@@ -231,26 +424,64 @@ export function restoreDocumentDeterministically(ocrText: string): {
         original: 'N.e',
         corrected: 'N°',
         reason: 'Corrección de símbolo OCR',
+        author: 'DETERMINISTIC_RULES',
       });
     }
 
-    // Fix "miercoles" -> "miércoles"
+    // 4. Safe OCR digit confusions inside Fecha (preserving original dd/mm/yy(yy) format)
+    modifiedLine = modifiedLine.replace(
+      /\b(Fecha\s*:\s*)([0-9SOolI]{1,2}[/-][0-9SOolI]{1,2}[/-][0-9SOolI]{2,4})\b/gi,
+      (full, prefix: string, rawDate: string) => {
+        const fixedDate = fixOcrNumericConfusions(rawDate);
+        if (fixedDate !== rawDate) {
+          changes.push({
+            original: rawDate,
+            corrected: fixedDate,
+            reason: 'Normalización numérica OCR en fecha',
+            author: 'DETERMINISTIC_RULES',
+          });
+        }
+        return `${prefix}${fixedDate}`;
+      },
+    );
+
+    // 5. Safe OCR digit confusions & spacing inside Monto (e.g. "8. S05, 10" -> "8.505,10")
+    modifiedLine = modifiedLine.replace(
+      /\b(Monto(?:\s*:)?\s*Bs\.?\s*)([0-9SOolI][0-9SOolI.,\s]*[0-9SOolI])\b/gi,
+      (full, prefix: string, rawAmount: string) => {
+        const fixedAmount = fixOcrNumericConfusions(rawAmount)
+          .replace(/\s*([.,])\s*/g, '$1')
+          .replace(/\s+/g, '');
+        if (fixedAmount !== rawAmount) {
+          changes.push({
+            original: rawAmount,
+            corrected: fixedAmount,
+            reason: 'Normalización numérica OCR en monto',
+            author: 'DETERMINISTIC_RULES',
+          });
+        }
+        return `${prefix}${fixedAmount}`;
+      },
+    );
+
+    // 6. Common Spanish diacritics
     if (/\bmiercoles\b/i.test(modifiedLine)) {
       modifiedLine = modifiedLine.replace(/\bmiercoles\b/gi, (m) => (m[0] === 'M' ? 'Miércoles' : 'miércoles'));
       changes.push({
         original: 'miercoles',
         corrected: 'miércoles',
         reason: 'Falta de tilde',
+        author: 'DETERMINISTIC_RULES',
       });
     }
 
-    // Fix "Ramirez" -> "Ramírez"
     if (/\bRamirez\b/.test(modifiedLine)) {
       modifiedLine = modifiedLine.replace(/\bRamirez\b/g, 'Ramírez');
       changes.push({
         original: 'Ramirez',
         corrected: 'Ramírez',
         reason: 'Falta de tilde',
+        author: 'DETERMINISTIC_RULES',
       });
     }
 
@@ -779,19 +1010,19 @@ export class SemanticAnalyzer {
     telemetry?: OllamaTelemetry;
   }> {
     const systemPrompt =
-      'Eres un experto restaurador de documentos y textos OCR en español.\n' +
-      'Tu ÚNICA misión es restaurar el formato y texto fiel del documento original a partir del texto OCR imperfecto.\n\n' +
+      'Eres un experto restaurador de documentos y textos OCR en español (impresos y manuscritos).\n' +
+      'Tu ÚNICA misión es restaurar el texto lo más fiel e idéntico posible al documento original.\n\n' +
       'REGLAS ESTRICTAS:\n' +
-      '1. Elimina encabezados, pies de página o artefactos de bordes que sean ruido visual de escaneo (letras sueltas, manchas, secuencias sin sentido tipo "e y j XA A...", "/ - - RDA...").\n' +
-      '2. Corrige errores ortográficos y tipográficos evidentes del OCR (ejemplos: "miercoles" -> "miércoles", "Ramirez" -> "Ramírez", "N.e" -> "N°", "6 Atentamente," -> "Atentamente,").\n' +
-      '3. PRESERVA con total exactitud todos los datos factuales: números de CI/NIT, nombres propios, universidades, instituciones, fechas y horas (ej: "13497224 L.P.", "25 de agosto de 2026"). NUNCA alteres dígitos ni inventes datos.\n' +
-      '4. Mantén la diagramación limpia del documento con sus párrafos y saltos de línea correspondientes.\n' +
+      '1. Elimina solo artefactos de escáner o bordes sin sentido (ej: "e y j XA A...", "/ - - RDA...").\n' +
+      '2. Corrige palabras mal leídas por el OCR impreso o manuscrito (ejemplos: "Revsión" -> "Revisión", "vcripicar" -> "verificar", "documentacioń" -> "documentación", "Gcomunicar" -> "Comunicar", "coalquier" -> "cualquier", "miercoles" -> "miércoles", "Ramirez" -> "Ramírez", "N.e" -> "N°", "6 Atentamente," -> "Atentamente,").\n' +
+      '3. PRESERVA el formato literal y los dígitos exactos de fechas, montos, CI, NIT y códigos: NUNCA expandas fechas numéricas a palabras (ej: mantén "15/09/26" como "15/09/26", NO la cambies a "1 de septiembre de 2026"), NUNCA inventes ni reordenes dígitos.\n' +
+      '4. Mantén exactamente la misma estructura de líneas y párrafos del documento.\n' +
       '5. Devuelve un JSON estructurado con:\n' +
-      '   - "restoredText": el documento completo restaurado, limpio y formateado con sus párrafos.\n' +
-      '   - "changes": array EXCLUSIVAMENTE con los fragmentos modificados, corregidos o eliminados (NO incluyas líneas o palabras que quedaron idénticas):\n' +
-      '     * "original": fragmento original exacto del OCR crudo.\n' +
-      '     * "corrected": fragmento corregido (o "" si se eliminó ruido).\n' +
-      '     * "reason": motivo breve (ej: "Falta de tilde", "Corrección de símbolo OCR", "Eliminación de ruido de escáner", "Eliminación de artefacto numérico").';
+      '   - "restoredText": el documento completo restaurado.\n' +
+      '   - "changes": array EXCLUSIVAMENTE con las palabras o fragmentos puntuales modificados (NO devuelvas líneas completas si solo cambió una palabra):\n' +
+      '     * "original": palabra o fragmento original exacto.\n' +
+      '     * "corrected": palabra o fragmento corregido (o "" si se eliminó ruido).\n' +
+      '     * "reason": motivo breve.';
 
     const schema = {
       type: 'object',
@@ -822,8 +1053,9 @@ export class SemanticAnalyzer {
     ], {
       format: schema,
       temperature: 0,
-      numPredict: options?.numPredict ?? 512,
+      numPredict: options?.numPredict ?? 768,
       numCtx: 2048,
+      timeoutMs: 120_000,
     });
 
     const parsed = chatResponse.parsed ?? {};
@@ -837,25 +1069,31 @@ export class SemanticAnalyzer {
     }
 
     let restored = parsed.restoredText.trim();
-    const changes: DocumentRestorationChange[] = (parsed.changes ?? []).filter(
+    const llmHints: DocumentRestorationChange[] = (parsed.changes ?? []).filter(
       c => c.original && c.original !== c.corrected,
     );
 
     // Deterministic noise sweep: ensure any residual noise line is removed
     const lines = restored.split(/\r?\n/);
     const filteredLines: string[] = [];
+    const noiseChanges: DocumentRestorationChange[] = [];
     for (const l of lines) {
       if (isNoisyHeaderOrBorderLine(l)) {
-        changes.push({
+        noiseChanges.push({
           original: l.trim(),
           corrected: '',
           reason: 'Eliminación de ruido de escáner',
+          author: 'LLAMA_3_2',
         });
       } else {
         filteredLines.push(l);
       }
     }
     restored = filteredLines.join('\n');
+
+    // Compute precise word-level diff so only modified words are highlighted
+    const wordDiffChanges = computeWordDiffChanges(ocrText, restored, llmHints);
+    const changes = [...noiseChanges, ...wordDiffChanges];
 
     return {
       restoredText: restored,
