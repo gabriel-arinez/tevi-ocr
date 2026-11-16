@@ -864,10 +864,26 @@ button.secondary {
 }
 .audit-legend-item { display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 500; }
 .audit-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.dot-orig { background: #b91c1c; }
 .dot-llama { background: #805ad5; }
 .dot-rules { background: #3182ce; }
 .dot-shield { background: #dd6b20; }
 .dot-noise { background: #a0aec0; }
+
+.audit-orig-deleted {
+  text-decoration: line-through;
+  color: #b91c1c;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.88em;
+  margin-right: 0.25rem;
+  font-weight: 500;
+  display: inline-block;
+  cursor: help;
+  vertical-align: baseline;
+}
 
 .audit-mark {
   cursor: pointer;

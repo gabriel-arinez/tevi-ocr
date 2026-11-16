@@ -139,6 +139,8 @@ describe('DocumentSynthesizer', () => {
     // 3. Annotated HTML has noise deletion header and underlines for corrected words
     assert.ok(result.annotatedHtml.includes('audit-removed-block'));
     assert.ok(result.annotatedHtml.includes('audit-mark-llama'));
+    assert.ok(result.annotatedHtml.includes('audit-orig-deleted'));
+    assert.ok(result.annotatedHtml.includes('miercoles'));
     assert.ok(result.annotatedHtml.includes('miércoles'));
   });
 
@@ -169,9 +171,10 @@ describe('DocumentSynthesizer', () => {
     assert.ok(result.finalText.includes('miércoles'));
     assert.ok(result.finalText.includes('Atentamente,'));
 
-    // 3. Annotated HTML marks them with audit-mark-rules (blue)
+    // 3. Annotated HTML marks them with audit-mark-rules (blue) and red strikethrough for previous values
     assert.ok(result.annotatedHtml.includes('audit-mark-rules'));
     assert.ok(!result.annotatedHtml.includes('audit-mark-llama'));
+    assert.ok(result.annotatedHtml.includes('audit-orig-deleted'));
     assert.ok(result.annotatedHtml.includes('data-author="DETERMINISTIC_RULES"'));
   });
 });

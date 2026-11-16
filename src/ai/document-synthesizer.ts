@@ -311,8 +311,20 @@ export function synthesizeDocumentView(input: DocumentSynthesisInput): DocumentS
     const reasonTooltip = escapeHtml(`Original: "${intv.original}" → Motivo: ${intv.reason}`);
     const fullTooltip = `${authorTooltip} • ${reasonTooltip}`;
 
+    const hasOriginalDiff = Boolean(
+      intv.original &&
+      intv.replacement &&
+      intv.original.trim() !== intv.replacement.trim() &&
+      intv.original.length < 80 &&
+      intv.category !== 'PROTECTED_FIELD',
+    );
+
+    const origDeletedHtml = hasOriginalDiff
+      ? `<del class="audit-orig-deleted" title="Valor OCR original sustituido: &quot;${escapeHtml(intv.original.trim())}&quot;">${escapeHtml(intv.original.trim())}</del> `
+      : '';
+
     annotatedHtml = annotatedHtml.replace(regex, (match) => {
-      return `<mark class="audit-mark ${badgeClass}" data-author="${escapeHtml(intv.author)}" data-original="${escapeHtml(intv.original)}" data-replacement="${escapeHtml(intv.replacement)}" data-title="${authorTooltip}" data-reason="${reasonTooltip}" title="${fullTooltip}" tabindex="0">${match}</mark>`;
+      return `${origDeletedHtml}<mark class="audit-mark ${badgeClass}" data-author="${escapeHtml(intv.author)}" data-original="${escapeHtml(intv.original)}" data-replacement="${escapeHtml(intv.replacement)}" data-title="${authorTooltip}" data-reason="${reasonTooltip}" title="${fullTooltip}" tabindex="0">${match}</mark>`;
     });
   }
 
