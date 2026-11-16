@@ -141,4 +141,37 @@ describe('DocumentSynthesizer', () => {
     assert.ok(result.annotatedHtml.includes('audit-mark-llama'));
     assert.ok(result.annotatedHtml.includes('miércoles'));
   });
+
+  it('en modo convencional aplica reglas deterministas y las resalta en azul (audit-mark-rules)', () => {
+    const rawOcr = 'Con CI. N.e 13497224 L.P. el día miercoles.\n6 Atentamente,';
+    const detRestored = 'Con C.I. N° 13497224 L.P. el día miércoles.\nAtentamente,';
+
+    const result = synthesizeDocumentView({
+      baseStructuredText: rawOcr,
+      restoredText: detRestored,
+      changes: [
+        { original: 'CI. N.e', corrected: 'C.I. N°', reason: 'Corrección de símbolo OCR' },
+        { original: 'miercoles', corrected: 'miércoles', reason: 'Falta de tilde' },
+        { original: '6 Atentamente,', corrected: 'Atentamente,', reason: 'Limpieza de artefacto numérico' },
+      ],
+      mode: 'conventional',
+    });
+
+    // 1. All interventions must be attributed to DETERMINISTIC_RULES, none to LLAMA_3_2
+    const llamaInterventions = result.interventions.filter(i => i.author === 'LLAMA_3_2');
+    assert.equal(llamaInterventions.length, 0);
+
+    const ruleInterventions = result.interventions.filter(i => i.author === 'DETERMINISTIC_RULES');
+    assert.ok(ruleInterventions.length >= 3);
+
+    // 2. Final text contains the rule corrections
+    assert.ok(result.finalText.includes('C.I. N°'));
+    assert.ok(result.finalText.includes('miércoles'));
+    assert.ok(result.finalText.includes('Atentamente,'));
+
+    // 3. Annotated HTML marks them with audit-mark-rules (blue)
+    assert.ok(result.annotatedHtml.includes('audit-mark-rules'));
+    assert.ok(!result.annotatedHtml.includes('audit-mark-llama'));
+    assert.ok(result.annotatedHtml.includes('data-author="DETERMINISTIC_RULES"'));
+  });
 });

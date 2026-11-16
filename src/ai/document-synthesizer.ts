@@ -131,21 +131,45 @@ export function synthesizeDocumentView(input: DocumentSynthesisInput): DocumentS
     }
   }
 
-  // 2. Incorporate explicit changes from restoration pass (if available)
-  if (input.mode !== 'conventional' && input.changes && input.changes.length > 0) {
+  // Also detect C.I. numbers to protect with security shield
+  const ciMatches = input.baseStructuredText.matchAll(/\b(?:C\.?I\.?|Cédula(?:\s+de\s+identidad)?)\s*(?:N[°º.e]+)?\s*([0-9]{5,9}(?:\s+[A-Z]{1,3}\.?)?)/gi);
+  for (const m of ciMatches) {
+    const rawVal = m[1]?.trim();
+    if (rawVal && rawVal.length >= 4 && !interventions.some(i => i.original === rawVal)) {
+      interventions.push({
+        id: `int-shield-${counter++}`,
+        original: rawVal,
+        replacement: rawVal,
+        author: 'SECURITY_SHIELD',
+        authorLabel: 'Blindaje de Seguridad',
+        category: 'PROTECTED_FIELD',
+        categoryLabel: 'Campo Sensible Protegido',
+        reason: 'Cédula de identidad preservada sin modificación',
+        details: 'El sistema previene alteraciones en datos de identificación personal.',
+      });
+    }
+  }
+
+  // 2. Incorporate explicit changes from restoration pass (rules or LLM)
+  if (input.changes && input.changes.length > 0) {
+    const isConventional = input.mode === 'conventional';
+    const author: InterventionAuthor = isConventional ? 'DETERMINISTIC_RULES' : 'LLAMA_3_2';
+    const authorLabel = isConventional ? 'Reglas Deterministas' : 'Llama 3.2 (IA)';
+    const categoryLabel = isConventional ? 'Regla Determinista' : 'Corrección Ortográfica/OCR';
+
     for (const ch of input.changes) {
       if (!ch.original) continue;
       const isNoise = !ch.corrected || ch.corrected.trim() === '';
       const intervention: DocumentIntervention = {
-        id: `int-llama-${counter++}`,
+        id: `int-${isConventional ? 'rule' : 'llama'}-${counter++}`,
         original: ch.original,
         replacement: ch.corrected,
-        author: 'LLAMA_3_2',
-        authorLabel: 'Llama 3.2 (IA)',
-        category: isNoise ? 'NOISE_REMOVAL' : 'TYPO_CORRECTION',
-        categoryLabel: isNoise ? 'Eliminación de Ruido' : 'Corrección Ortográfica/OCR',
-        reason: ch.reason || (isNoise ? 'Artefacto de escáner eliminado' : 'Corrección contextual asistida'),
-        details: isNoise ? 'Línea o fragmento inconexo depurado del resultado final.' : 'Palabra restaurada fielmente al original.',
+        author,
+        authorLabel,
+        category: isNoise ? 'NOISE_REMOVAL' : (isConventional ? 'FORMAT_NORMALIZATION' : 'TYPO_CORRECTION'),
+        categoryLabel: isNoise ? 'Eliminación de Ruido' : categoryLabel,
+        reason: ch.reason || (isNoise ? 'Artefacto de escáner eliminado' : 'Normalización determinista'),
+        details: isNoise ? 'Línea o fragmento inconexo depurado del resultado final.' : (isConventional ? 'Palabra corregida por reglas fijas sin IA.' : 'Palabra restaurada fielmente al original.'),
       };
       interventions.push(intervention);
       if (!isNoise) {
@@ -201,7 +225,7 @@ export function synthesizeDocumentView(input: DocumentSynthesisInput): DocumentS
 
   // 4. Determine Polished Final Text
   let finalText: string;
-  if (input.mode !== 'conventional' && input.restoredText && input.restoredText.trim().length > 0) {
+  if (input.restoredText && input.restoredText.trim().length > 0) {
     // Filter any stray residual noise lines
     finalText = input.restoredText
       .split(/\r?\n/)
