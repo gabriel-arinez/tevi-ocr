@@ -58,6 +58,90 @@ import { synthesizeDocumentView, type DocumentSynthesisResult } from './ai/docum
 
 const app = express();
 let regionalReviewsInFlight = 0;
+
+async function restoreAndSynthesizeText(
+  targetOcrText: string,
+  requestedAiModeRaw: unknown,
+): Promise<{
+  effectiveAiMode: 'conventional' | 'assisted';
+  aiReview: SemanticAnalysisResult;
+  documentSynthesis: DocumentSynthesisResult;
+}> {
+  const requestedAiMode = requestedAiModeRaw;
+  const isConventional = requestedAiMode === 'conventional' || requestedAiMode === 'none';
+  const effectiveAiMode: 'conventional' | 'assisted' = isConventional ? 'conventional' : 'assisted';
+
+  let aiReview: SemanticAnalysisResult;
+  if (effectiveAiMode !== 'conventional' && config.ollama.enabled) {
+    const analyzer = new SemanticAnalyzer();
+    try {
+      const restoration = await analyzer.restoreDocumentText(targetOcrText);
+      aiReview = {
+        enabled: true,
+        available: true,
+        executionMode: 'assisted',
+        classification: {
+          documentType: 'OTRO',
+          documentIntent: 'Restauración integral de formato y texto',
+          confidence: 1.0,
+        },
+        anomalies: [],
+        extractedFields: [],
+        restoredText: restoration.restoredText,
+        restorationChanges: restoration.changes,
+        telemetry: restoration.telemetry,
+      };
+    } catch (err: unknown) {
+      const det = restoreDocumentDeterministically(targetOcrText);
+      aiReview = {
+        enabled: false,
+        available: false,
+        executionMode: 'assisted',
+        classification: {
+          documentType: 'OTRO',
+          documentIntent: 'Fallback seguro a restauración por reglas',
+          confidence: 0,
+        },
+        anomalies: [],
+        extractedFields: [],
+        restoredText: det.restoredText,
+        restorationChanges: det.changes,
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
+  } else {
+    const det = restoreDocumentDeterministically(targetOcrText);
+    aiReview = {
+      enabled: false,
+      available: true,
+      executionMode: 'conventional',
+      classification: {
+        documentType: 'OTRO',
+        documentIntent: 'Procesamiento convencional sin inferencia LLM',
+        confidence: 1.0,
+      },
+      anomalies: [],
+      extractedFields: [],
+      restoredText: det.restoredText,
+      restorationChanges: det.changes,
+    };
+  }
+
+  const documentSynthesis: DocumentSynthesisResult = synthesizeDocumentView({
+    baseStructuredText: targetOcrText,
+    restoredText: aiReview.restoredText,
+    changes: aiReview.restorationChanges,
+    anomalies: aiReview.anomalies,
+    extractedFields: aiReview.extractedFields,
+    mode: effectiveAiMode,
+  });
+
+  return {
+    effectiveAiMode,
+    aiReview,
+    documentSynthesis,
+  };
+}
 const MAX_CONCURRENT_REGION_REVIEWS = 2;
 
 app.disable('x-powered-by');
@@ -210,6 +294,12 @@ app.post(
         const quality =
           result.quality;
 
+        const { aiReview, documentSynthesis } =
+          await restoreAndSynthesizeText(
+            result.text,
+            request.body?.aiReview ?? request.query?.aiReview,
+          );
+
         response.json({
           ok: true,
 
@@ -248,6 +338,15 @@ app.post(
             text:
               result.text,
 
+            rawText:
+              result.text,
+
+            readableText:
+              result.text,
+
+            structuredText:
+              result.text,
+
             confidence:
               null,
 
@@ -276,6 +375,10 @@ app.post(
 
             modelLoadDurationMs:
               result.modelLoadDurationMs,
+
+            aiReview,
+
+            documentSynthesis,
 
             pages: [
               {
@@ -486,76 +589,12 @@ app.post(
         });
       });
 
-      const requestedAiMode = request.body?.aiReview ?? request.query?.aiReview;
-      const isConventional = requestedAiMode === 'conventional' || requestedAiMode === 'none';
-      const effectiveAiMode: 'conventional' | 'assisted' = isConventional ? 'conventional' : 'assisted';
-
-      let aiReview: SemanticAnalysisResult;
       const targetOcrText = structuredText || combinedRawText;
-      if (effectiveAiMode !== 'conventional' && config.ollama.enabled) {
-        const analyzer = new SemanticAnalyzer();
-        try {
-          const restoration = await analyzer.restoreDocumentText(targetOcrText);
-          aiReview = {
-            enabled: true,
-            available: true,
-            executionMode: 'assisted',
-            classification: {
-              documentType: 'OTRO',
-              documentIntent: 'Restauración integral de formato y texto',
-              confidence: 1.0,
-            },
-            anomalies: [],
-            extractedFields: [],
-            restoredText: restoration.restoredText,
-            restorationChanges: restoration.changes,
-            telemetry: restoration.telemetry,
-          };
-        } catch (err: unknown) {
-          const det = restoreDocumentDeterministically(targetOcrText);
-          aiReview = {
-            enabled: false,
-            available: false,
-            executionMode: 'assisted',
-            classification: {
-              documentType: 'OTRO',
-              documentIntent: 'Fallback seguro a restauración por reglas',
-              confidence: 0,
-            },
-            anomalies: [],
-            extractedFields: [],
-            restoredText: det.restoredText,
-            restorationChanges: det.changes,
-            error: err instanceof Error ? err.message : String(err),
-          };
-        }
-      } else {
-        const det = restoreDocumentDeterministically(targetOcrText);
-        aiReview = {
-          enabled: false,
-          available: true,
-          executionMode: 'conventional',
-          classification: {
-            documentType: 'OTRO',
-            documentIntent: 'Procesamiento convencional sin inferencia LLM',
-            confidence: 1.0,
-          },
-          anomalies: [],
-          extractedFields: [],
-          restoredText: det.restoredText,
-          restorationChanges: det.changes,
-        };
-      }
-
-      // Synthesize final polished document and technological audit view
-      const documentSynthesis: DocumentSynthesisResult = synthesizeDocumentView({
-        baseStructuredText: structuredText,
-        restoredText: aiReview.restoredText,
-        changes: aiReview.restorationChanges,
-        anomalies: aiReview.anomalies,
-        extractedFields: aiReview.extractedFields,
-        mode: effectiveAiMode,
-      });
+      const { effectiveAiMode, aiReview, documentSynthesis } =
+        await restoreAndSynthesizeText(
+          targetOcrText,
+          request.body?.aiReview ?? request.query?.aiReview,
+        );
 
       response.json({
         ok: true,

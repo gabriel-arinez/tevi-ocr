@@ -155,6 +155,7 @@ const regionalReviewResult = document.getElementById('regionalReviewResult');
 
 const finalResultButton = document.getElementById('finalResultButton');
 const auditViewButton = document.getElementById('auditViewButton');
+const handwritingViewButton = document.getElementById('handwritingViewButton');
 const auditLegend = document.getElementById('auditLegend');
 const ocrAuditResult = document.getElementById('ocrAuditResult');
 
@@ -391,27 +392,42 @@ function escapeHtml(str) {
 function showPrintedText(view) {
   printedTextState.current = view;
   const isFinal = view === 'final';
+  const isAudit = view === 'audit';
+  const isHandwriting = view === 'handwriting';
 
   if (isFinal) {
     result.hidden = false;
     ocrAuditResult.hidden = true;
     auditLegend.hidden = true;
+    if (printedReviewNotice) printedReviewNotice.hidden = true;
+    if (handwritingReview) handwritingReview.hidden = true;
     result.textContent = printedTextState.final || printedTextState.raw;
-  } else {
+  } else if (isAudit) {
     result.hidden = true;
     ocrAuditResult.hidden = false;
     auditLegend.hidden = false;
+    if (printedReviewNotice) printedReviewNotice.hidden = false;
+    if (handwritingReview) handwritingReview.hidden = true;
     ocrAuditResult.innerHTML = printedTextState.annotatedHtml || escapeHtml(printedTextState.final || printedTextState.raw);
+  } else if (isHandwriting) {
+    result.hidden = true;
+    ocrAuditResult.hidden = true;
+    auditLegend.hidden = true;
+    if (printedReviewNotice) printedReviewNotice.hidden = true;
+    if (handwritingReview) handwritingReview.hidden = false;
   }
 
   finalResultButton?.setAttribute('aria-pressed', String(isFinal));
-  auditViewButton?.setAttribute('aria-pressed', String(!isFinal));
+  auditViewButton?.setAttribute('aria-pressed', String(isAudit));
+  handwritingViewButton?.setAttribute('aria-pressed', String(isHandwriting));
   finalResultButton?.classList.toggle('secondary', !isFinal);
-  auditViewButton?.classList.toggle('secondary', isFinal);
+  auditViewButton?.classList.toggle('secondary', !isAudit);
+  handwritingViewButton?.classList.toggle('secondary', !isHandwriting);
 }
 
 finalResultButton?.addEventListener('click', () => showPrintedText('final'));
 auditViewButton?.addEventListener('click', () => showPrintedText('audit'));
+handwritingViewButton?.addEventListener('click', () => showPrintedText('handwriting'));
 
 
 function setStatus(
@@ -445,7 +461,10 @@ for (
       result.textContent =
         '';
       if (printedTextControls) printedTextControls.hidden = true;
+      if (handwritingViewButton) handwritingViewButton.hidden = true;
       if (printedReviewNotice) printedReviewNotice.hidden = true;
+      if (auditLegend) auditLegend.hidden = true;
+      if (ocrAuditResult) ocrAuditResult.hidden = true;
       if (printedEvidencePanel) printedEvidencePanel.hidden = true;
       lastPrintedFile = null;
       revokePrintedImagePreview();
@@ -684,7 +703,7 @@ function renderHandwritingReview(
   }
 
   handwritingReview.hidden =
-    false;
+    printedTextState.current !== 'handwriting';
 
   reviewBadge.textContent =
     model.requiresReview
@@ -842,7 +861,10 @@ async function submitOcr(
 
   result.textContent = '';
   if (printedTextControls) printedTextControls.hidden = true;
+  if (handwritingViewButton) handwritingViewButton.hidden = true;
   if (printedReviewNotice) printedReviewNotice.hidden = true;
+  if (auditLegend) auditLegend.hidden = true;
+  if (ocrAuditResult) ocrAuditResult.hidden = true;
   if (printedEvidencePanel) printedEvidencePanel.hidden = true;
   lastPrintedFile = null;
   revokePrintedImagePreview();
@@ -896,32 +918,34 @@ async function submitOcr(
       ? 'Manuscrito'
       : 'Texto impreso';
 
-  if (payload.ocr.mode === 'printed') {
+  const isHandwritten = payload.ocr.mode === 'handwritten';
+  const synthesis = payload.ocr.documentSynthesis;
+  printedTextState = {
+    raw: payload.ocr.rawText || payload.ocr.text,
+    final: synthesis?.finalText || payload.ocr.structuredText || payload.ocr.readableText || payload.ocr.text,
+    annotatedHtml: synthesis?.annotatedHtml || '',
+    interventions: synthesis?.interventions || [],
+    current: 'final',
+  };
+
+  if (isHandwritten) {
+    if (printedTextControls) printedTextControls.hidden = false;
+    if (handwritingViewButton) handwritingViewButton.hidden = false;
+    if (printedEvidencePanel) printedEvidencePanel.hidden = true;
+    revokePrintedImagePreview();
+    renderHandwritingReview(payload.ocr);
+    showPrintedText('final');
+  } else {
     if (payload.document.kind !== 'pdf') {
       lastPrintedFile = file;
       printedImagePreviewUrl = URL.createObjectURL(file);
       if (printedImagePreview) printedImagePreview.src = printedImagePreviewUrl;
     }
-    const synthesis = payload.ocr.documentSynthesis;
-    printedTextState = {
-      raw: payload.ocr.text,
-      final: synthesis?.finalText || payload.ocr.structuredText || payload.ocr.readableText || payload.ocr.text,
-      annotatedHtml: synthesis?.annotatedHtml || '',
-      interventions: synthesis?.interventions || [],
-      current: 'final',
-    };
     if (printedTextControls) printedTextControls.hidden = false;
-    if (printedReviewNotice) printedReviewNotice.hidden = false;
+    if (handwritingViewButton) handwritingViewButton.hidden = true;
+    clearHandwritingReview();
     showPrintedText('final');
     renderPrintedEvidence(payload.ocr.pages);
-  } else {
-    result.textContent = payload.ocr.text;
-    if (printedTextControls) printedTextControls.hidden = true;
-    if (printedReviewNotice) printedReviewNotice.hidden = true;
-    if (printedEvidencePanel) printedEvidencePanel.hidden = true;
-    if (auditLegend) auditLegend.hidden = true;
-    if (ocrAuditResult) ocrAuditResult.hidden = true;
-    revokePrintedImagePreview();
   }
 
   lastOcrText = payload.ocr.readableText ?? payload.ocr.text;
@@ -946,17 +970,6 @@ async function submitOcr(
       `Confianza: ${confidence}`,
       `Calidad: ${quality}`,
     ].join('\n');
-  }
-
-  if (
-    payload.ocr.mode ===
-    'handwritten'
-  ) {
-    renderHandwritingReview(
-      payload.ocr,
-    );
-  } else {
-    clearHandwritingReview();
   }
 
   setStatus(

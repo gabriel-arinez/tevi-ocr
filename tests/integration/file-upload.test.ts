@@ -2079,6 +2079,21 @@ test(
                 .rawText,
               payload.ocr.text,
             );
+
+            assert.ok(
+              (payload.ocr as any).documentSynthesis,
+              'debe incluir documentSynthesis',
+            );
+
+            assert.equal(
+              (payload.ocr as any).documentSynthesis.finalText,
+              'NIT: 123',
+            );
+
+            assert.ok(
+              (payload.ocr as any).aiReview,
+              'debe incluir aiReview',
+            );
           },
         );
       },
