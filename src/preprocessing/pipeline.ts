@@ -32,13 +32,14 @@ export async function preprocessForOcr(
       .toBuffer();
 
   /*
-   * Estrategia seleccionada mediante benchmark F5:
-   * median(3) + normalize.
+   * Normalización adaptativa:
+   * 'normalize' maximiza el rango dinámico sin erosionar tipografías finas ni encabezados.
+   * El filtro de mediana degrada fotografías reales de contratos y no debe ser obligatorio.
    */
   const filtered =
     await preprocessImage(
       oriented,
-      'median+normalize',
+      'normalize',
     );
 
   /*

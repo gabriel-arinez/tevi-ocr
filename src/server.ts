@@ -62,6 +62,7 @@ let regionalReviewsInFlight = 0;
 async function restoreAndSynthesizeText(
   targetOcrText: string,
   requestedAiModeRaw: unknown,
+  lowConfidenceWords?: Array<{ id: string; text: string; confidence: number; lineText?: string }>,
 ): Promise<{
   effectiveAiMode: 'conventional' | 'assisted';
   aiReview: SemanticAnalysisResult;
@@ -76,22 +77,15 @@ async function restoreAndSynthesizeText(
   if (effectiveAiMode !== 'conventional' && config.ollama.enabled) {
     const analyzer = new SemanticAnalyzer();
     try {
-      const restoration = await analyzer.restoreDocumentText(det.restoredText);
-      aiReview = {
-        enabled: true,
-        available: true,
-        executionMode: 'assisted',
-        classification: {
-          documentType: 'OTRO',
-          documentIntent: 'Restauración integral de formato y texto',
-          confidence: 1.0,
-        },
-        anomalies: [],
-        extractedFields: [],
-        restoredText: restoration.restoredText,
-        restorationChanges: [...det.changes, ...restoration.changes],
-        telemetry: restoration.telemetry,
-      };
+      aiReview = await analyzer.analyze({
+        rawText: targetOcrText,
+        readableText: det.restoredText,
+        lowConfidenceWords: lowConfidenceWords ?? [],
+        mode: 'assisted',
+      });
+      // Integrar cambios deterministas preservando origen
+      aiReview.restorationChanges = [...det.changes, ...(aiReview.restorationChanges ?? [])];
+      aiReview.restoredText = det.restoredText;
     } catch (err: unknown) {
       aiReview = {
         enabled: false,
@@ -99,7 +93,7 @@ async function restoreAndSynthesizeText(
         executionMode: 'assisted',
         classification: {
           documentType: 'OTRO',
-          documentIntent: 'Fallback seguro a restauración por reglas',
+          documentIntent: 'Fallback seguro a restauración por reglas deterministas',
           confidence: 0,
         },
         anomalies: [],
@@ -593,6 +587,7 @@ app.post(
         await restoreAndSynthesizeText(
           targetOcrText,
           request.body?.aiReview ?? request.query?.aiReview,
+          allLowConfidenceWords,
         );
 
       response.json({

@@ -2,7 +2,9 @@ name: TEVI OCR printed regression
 on:
   push:
     branches:
-      - feat/printed-document-layout-pipeline-20261026
+      - main
+      - 'feat/**'
+      - 'fix/**'
   pull_request:
     branches:
       - main

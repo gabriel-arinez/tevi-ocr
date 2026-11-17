@@ -155,6 +155,7 @@ const regionalReviewResult = document.getElementById('regionalReviewResult');
 
 const finalResultButton = document.getElementById('finalResultButton');
 const auditViewButton = document.getElementById('auditViewButton');
+const rawTextButton = document.getElementById('rawTextButton');
 const handwritingViewButton = document.getElementById('handwritingViewButton');
 const auditLegend = document.getElementById('auditLegend');
 const ocrAuditResult = document.getElementById('ocrAuditResult');
@@ -393,6 +394,7 @@ function showPrintedText(view) {
   printedTextState.current = view;
   const isFinal = view === 'final';
   const isAudit = view === 'audit';
+  const isRaw = view === 'raw';
   const isHandwriting = view === 'handwriting';
 
   if (isFinal) {
@@ -406,9 +408,26 @@ function showPrintedText(view) {
     result.hidden = true;
     ocrAuditResult.hidden = false;
     auditLegend.hidden = false;
-    if (printedReviewNotice) printedReviewNotice.hidden = false;
+    if (printedReviewNotice) {
+      printedReviewNotice.hidden = false;
+      if (printedTextState.interventions && printedTextState.interventions.length === 0) {
+        printedReviewNotice.textContent = 'Texto verificado: no se requirieron modificaciones (ni por reglas ni por IA).';
+      } else {
+        printedReviewNotice.textContent = 'Pase el cursor sobre las palabras subrayadas en la vista de revisión para ver qué se modificó y por qué.';
+      }
+    }
     if (handwritingReview) handwritingReview.hidden = true;
     ocrAuditResult.innerHTML = printedTextState.annotatedHtml || escapeHtml(printedTextState.final || printedTextState.raw);
+  } else if (isRaw) {
+    result.hidden = false;
+    ocrAuditResult.hidden = true;
+    auditLegend.hidden = true;
+    if (printedReviewNotice) {
+      printedReviewNotice.hidden = false;
+      printedReviewNotice.textContent = 'Transcripción original directa del motor OCR sin intervenciones deterministas ni de IA.';
+    }
+    if (handwritingReview) handwritingReview.hidden = true;
+    result.textContent = printedTextState.raw;
   } else if (isHandwriting) {
     result.hidden = true;
     ocrAuditResult.hidden = true;
@@ -419,14 +438,17 @@ function showPrintedText(view) {
 
   finalResultButton?.setAttribute('aria-pressed', String(isFinal));
   auditViewButton?.setAttribute('aria-pressed', String(isAudit));
+  rawTextButton?.setAttribute('aria-pressed', String(isRaw));
   handwritingViewButton?.setAttribute('aria-pressed', String(isHandwriting));
   finalResultButton?.classList.toggle('secondary', !isFinal);
   auditViewButton?.classList.toggle('secondary', !isAudit);
+  rawTextButton?.classList.toggle('secondary', !isRaw);
   handwritingViewButton?.classList.toggle('secondary', !isHandwriting);
 }
 
 finalResultButton?.addEventListener('click', () => showPrintedText('final'));
 auditViewButton?.addEventListener('click', () => showPrintedText('audit'));
+rawTextButton?.addEventListener('click', () => showPrintedText('raw'));
 handwritingViewButton?.addEventListener('click', () => showPrintedText('handwriting'));
 
 
