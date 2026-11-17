@@ -65,6 +65,7 @@ export interface SemanticAnalysisResult {
   restorationChanges?: DocumentRestorationChange[];
   telemetry?: OllamaTelemetry;
   error?: string;
+  warnings?: string[];
 }
 
 export interface WordContextItem {
@@ -1165,11 +1166,32 @@ export class SemanticAnalyzer {
 
       const textSample = (input.readableText || input.rawText).slice(0, 800);
 
-      // Execute specialized passes for backward compatibility
-      const [anomalyResult, classResult] = await Promise.all([
+      // Independent passes: a classification failure must not erase valid
+      // corrections from the anomaly reviewer (and vice versa).
+      const [anomalyAttempt, classificationAttempt] = await Promise.allSettled([
         this.evaluateAnomalies(candidateList, input.rawText, { numPredict: 256 }),
         this.classifyAndExtractFields(textSample, input.rawText, { numPredict: 256 }),
       ]);
+      if (anomalyAttempt.status === 'rejected' && classificationAttempt.status === 'rejected') {
+        throw new Error('OLLAMA_BOTH_ANALYSES_FAILED');
+      }
+      const anomalyResult = anomalyAttempt.status === 'fulfilled'
+        ? anomalyAttempt.value
+        : { anomalies: [] as SemanticAnomaly[], telemetry: undefined };
+      const classResult = classificationAttempt.status === 'fulfilled'
+        ? classificationAttempt.value
+        : {
+            classification: {
+              documentType: 'OTRO' as DocumentTypeCategory,
+              documentIntent: 'Clasificación no disponible',
+              confidence: 0,
+            },
+            extractedFields: [] as SemanticExtractedField[],
+            telemetry: undefined,
+          };
+      const warnings: string[] = [];
+      if (anomalyAttempt.status === 'rejected') warnings.push('ANOMALY_REVIEW_UNAVAILABLE');
+      if (classificationAttempt.status === 'rejected') warnings.push('DOCUMENT_CLASSIFICATION_UNAVAILABLE');
 
       const det = restoreDocumentDeterministically(input.rawText);
 
@@ -1199,6 +1221,7 @@ export class SemanticAnalyzer {
         classification: classResult.classification,
         anomalies: anomalyResult.anomalies,
         extractedFields: classResult.extractedFields,
+        warnings,
         restoredText: det.restoredText,
         restorationChanges: det.changes,
         telemetry,
