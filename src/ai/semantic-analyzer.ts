@@ -755,6 +755,23 @@ export class SemanticAnalyzer {
       };
     }
 
+    // Only candidate IDs actually sent to the model may become suggestions.
+    // Never accept an invented ID or a word substituted for the candidate.
+    if (!candidate || normalizeTokenKey(candidate.text) !== normalizeTokenKey(originalTrimmed)) {
+      return {
+        id: suggestion.id,
+        originalText: originalTrimmed,
+        suggestedAlternative: suggestedTrimmed,
+        decision,
+        reason: suggestion.reason,
+        charDistance: dist,
+        isProtectedField: isProtected,
+        status: 'REJECTED',
+        rejectionReason: !candidate ? 'UNKNOWN_CANDIDATE_ID' : 'CANDIDATE_TEXT_MISMATCH',
+        lineContext,
+      };
+    }
+
     return {
       id: suggestion.id,
       originalText: originalTrimmed,
@@ -776,7 +793,12 @@ export class SemanticAnalyzer {
     rawText: string,
   ): SemanticExtractedField {
     const trimmedEvidence = field.evidence.trim();
-    const verified = trimmedEvidence.length > 0 && rawText.includes(trimmedEvidence);
+    const trimmedValue = field.value.trim();
+    const escapedValue = trimmedValue.replace(/[.*+?^${}()|[\]\\]/g, '\\    const verified = trimmedEvidence.length > 0 && rawText.includes(trimmedEvidence);');
+    const valuePattern = new RegExp('(?<![\\p{L}\\p{N}])' + escapedValue +
+      '(?![\\p{L}\\p{N}])', 'u');
+    const verified = trimmedEvidence.length > 0 && trimmedValue.length > 0 &&
+      rawText.includes(trimmedEvidence) && valuePattern.test(trimmedEvidence);
 
     return {
       fieldName: field.fieldName.trim(),
@@ -873,7 +895,10 @@ export class SemanticAnalyzer {
       numCtx: 1024,
     });
 
-    const parsedEvaluations = chatResponse.parsed?.evaluations ??
+    if (!chatResponse.parsed || !Array.isArray(chatResponse.parsed.evaluations)) {
+      throw new Error('OLLAMA_ANOMALY_RESPONSE_INVALID');
+    }
+    const parsedEvaluations = chatResponse.parsed.evaluations ??
       (chatResponse.parsed?.suggestions ?? []).map(s => ({
         id: s.id,
         decision: 'CORRECTION' as SemanticAnomalyDecision,
@@ -977,7 +1002,12 @@ export class SemanticAnalyzer {
       numCtx: 1024,
     });
 
-    const parsed = chatResponse.parsed ?? {};
+    if (!chatResponse.parsed ||
+        !Array.isArray(chatResponse.parsed.fields) ||
+        typeof chatResponse.parsed.documentType !== 'string') {
+      throw new Error('OLLAMA_CLASSIFICATION_RESPONSE_INVALID');
+    }
+    const parsed = chatResponse.parsed;
     const documentType = parsed.documentType ?? 'OTRO';
     const documentIntent = (parsed.documentIntent ?? 'Análisis completado').slice(0, 150);
 
