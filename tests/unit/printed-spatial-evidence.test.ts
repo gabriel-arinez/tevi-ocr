@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parsePrintedTsv, summarizePrintedSpatialEvidence } from '../../src/ocr/printed-spatial-evidence.js';
+import { parsePrintedTsv, summarizePrintedSpatialEvidence, contextualizeLowConfidenceWords } from '../../src/ocr/printed-spatial-evidence.js';
 
 test('TSV: extrae palabras con caja y confianza sin borrar texto', () => {
   const tsv = [
@@ -20,4 +20,18 @@ test('TSV: extrae palabras con caja y confianza sin borrar texto', () => {
 test('TSV: falla cerradamente ante formato inválido', () => {
   assert.throws(() => parsePrintedTsv('no es TSV'), /TSV/);
   assert.deepEqual(parsePrintedTsv(''), []);
+});
+
+test('contextualiza detecciones repetidas usando su línea TSV exacta', () => {
+  const words = [
+    {text: 'DE', confidence: 25, bbox: {left: 30, top: 10, width: 20, height: 10}, block: 1, paragraph: 1, line: 1, page: 1},
+    {text: 'CONTRATO', confidence: 91, bbox: {left: 60, top: 10, width: 50, height: 10}, block: 1, paragraph: 1, line: 1, page: 1},
+    {text: 'DE', confidence: 21, bbox: {left: 30, top: 90, width: 20, height: 10}, block: 2, paragraph: 1, line: 1, page: 1},
+    {text: 'SERVICIOS', confidence: 95, bbox: {left: 60, top: 90, width: 60, height: 10}, block: 2, paragraph: 1, line: 1, page: 1},
+  ];
+  const result = contextualizeLowConfidenceWords(words, 1);
+  assert.equal(result.length, 2);
+  assert.equal(result[0]?.lineText, 'DE CONTRATO');
+  assert.equal(result[1]?.lineText, 'DE SERVICIOS');
+  assert.notEqual(result[0]?.id, result[1]?.id);
 });
