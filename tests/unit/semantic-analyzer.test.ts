@@ -261,6 +261,40 @@ describe('SemanticAnalyzer', () => {
     assert.ok(selected.some(s => s.text === 'revlsión'), 'revlsión en línea legítima debe ser seleccionada');
   });
 
+
+  it('mantiene propuestas correctivas aunque falle por separado la clasificación', async () => {
+    const client = new OllamaClient({
+      fetchFn: async (_url, init) => {
+        const messages = JSON.parse(String(init?.body ?? '{}')).messages ?? [];
+        const prompt = JSON.stringify(messages);
+        if (!prompt.includes('candidatos OCR')) {
+          return new Response('Servicio de clasificación no disponible', { status: 503 });
+        }
+        return new Response(JSON.stringify({
+          message: { role: 'assistant', content: JSON.stringify({
+            evaluations: [{
+              id: 'real-1', original: 'revlsión', suggested: 'revisión',
+              decision: 'CORRECTION', reason: 'Error OCR',
+            }],
+          }) },
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      },
+    });
+    const analyzer = new SemanticAnalyzer(client);
+    const result = await analyzer.analyze({
+      mode: 'assisted',
+      rawText: 'Se requiere revlsión del expediente.',
+      lowConfidenceWords: [{
+        id: 'real-1', text: 'revlsión', confidence: 40,
+        lineText: 'Se requiere revlsión del expediente.',
+      }],
+    });
+    assert.equal(result.enabled, true);
+    assert.equal(result.anomalies.some(a => a.status === 'SUGGESTED'), true);
+    assert.ok(result.warnings?.includes('DOCUMENT_CLASSIFICATION_UNAVAILABLE'));
+  });
+
+
   it('aplica fallback seguro y no lanza excepción si Ollama falla', async () => {
     const client = new OllamaClient({
       fetchFn: async () => {

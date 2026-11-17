@@ -89,3 +89,31 @@ export function summarizePrintedSpatialEvidence(words: readonly PrintedSpatialWo
     removedWordCount: 0,
   };
 }
+
+/**
+ * Retrieve the actual TSV line around a low-confidence word, rather than
+ * finding the first arbitrary raw OCR line that contains the same token.
+ */
+export function contextualizeLowConfidenceWords(
+  words: readonly PrintedSpatialWord[],
+  pageNumber: number,
+): Array<{ id: string; text: string; confidence: number; lineText: string }> {
+  const lines = new Map<string, PrintedSpatialWord[]>();
+  for (const word of words) {
+    const key = [word.page, word.block, word.paragraph, word.line].join(':');
+    const group = lines.get(key) ?? [];
+    group.push(word);
+    lines.set(key, group);
+  }
+  return words.filter(word => word.confidence >= 0 && word.confidence < 50)
+    .map((word, index) => {
+      const key = [word.page, word.block, word.paragraph, word.line].join(':');
+      const group = [...(lines.get(key) ?? [word])]
+        .sort((a, b) => a.bbox.left - b.bbox.left);
+      return {
+        id: `p${pageNumber}-w${index + 1}`,
+        text: word.text, confidence: word.confidence,
+        lineText: group.map(item => item.text).join(' '),
+      };
+    });
+}

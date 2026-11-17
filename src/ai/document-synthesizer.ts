@@ -1,4 +1,5 @@
 import { extractStructuredFields } from '../ocr/structured-field-extractor.js';
+import { applySafeSemanticSuggestions, type SemanticApplicationResult } from './semantic-correction-application.js';
 import {
   isNoisyHeaderOrBorderLine,
   type SemanticAnomaly,
@@ -35,6 +36,7 @@ export interface DocumentSynthesisResult {
   finalText: string;
   annotatedHtml: string;
   interventions: DocumentIntervention[];
+  reviewSuggestions: SemanticApplicationResult['reviewOnly'];
   stats: {
     llamaCorrections: number;
     ruleNormalizations: number;
@@ -155,44 +157,23 @@ export function synthesizeDocumentView(input: DocumentSynthesisInput): DocumentS
     }
   }
 
-  // 3. Incorporate Llama 3.2 Contextual Corrections from anomalies list (if not already recorded)
-  if (input.mode !== 'conventional' && input.anomalies && input.anomalies.length > 0) {
-    for (const anom of input.anomalies) {
-      const alreadyPresent = interventions.some(i => i.original === anom.originalText);
-      if (alreadyPresent) continue;
-
-      if (anom.status === 'SUGGESTED' && anom.suggestedAlternative !== anom.originalText) {
-        const intervention: DocumentIntervention = {
-          id: `int-llama-${counter++}`,
-          original: anom.originalText,
-          replacement: anom.suggestedAlternative,
-          author: 'LLAMA_3_2',
-          authorLabel: 'Llama 3.2 (IA)',
-          category: 'TYPO_CORRECTION',
-          categoryLabel: 'Corrección Ortográfica/OCR',
-          reason: anom.reason || 'Corrección contextual asistida',
-          details: `Distancia Levenshtein: ${anom.charDistance}. Verificado contextualmente.`,
-          charDistance: anom.charDistance,
-        };
-        interventions.push(intervention);
-        appliedReplacements.push({
-          target: anom.originalText,
-          replacement: anom.suggestedAlternative,
-          intervention,
-        });
-      } else if (anom.isProtectedField || anom.rejectionReason === 'PROTECTED_FIELD_RESTRICTED_MANUAL_REVIEW_ONLY') {
-        interventions.push({
-          id: `int-shield-${counter++}`,
-          original: anom.originalText,
-          replacement: anom.originalText,
-          author: 'SECURITY_SHIELD',
-          authorLabel: 'Blindaje de Seguridad',
-          category: 'PROTECTED_FIELD',
-          categoryLabel: 'Intento de Alteración Rechazado',
-          reason: `Rechazado: ${anom.rejectionReason ?? 'Campo contractual protegido'}`,
-          details: `La IA sugirió modificar este campo sensible, pero el validador de seguridad bloqueó el cambio.`,
-        });
-      }
+  // 3. Retain rejected proposals for audit; only actual applied changes
+  // may appear as Llama corrections in the final document.
+  if (input.mode !== 'conventional') {
+    for (const anom of input.anomalies ?? []) {
+      if (!anom.isProtectedField &&
+          anom.rejectionReason !== 'PROTECTED_FIELD_RESTRICTED_MANUAL_REVIEW_ONLY') continue;
+      interventions.push({
+        id: `int-shield-${counter++}`,
+        original: anom.originalText,
+        replacement: anom.originalText,
+        author: 'SECURITY_SHIELD',
+        authorLabel: 'Blindaje de Seguridad',
+        category: 'PROTECTED_FIELD',
+        categoryLabel: 'Intento de Alteración Rechazado',
+        reason: `Rechazado: ${anom.rejectionReason ?? 'Campo contractual protegido'}`,
+        details: 'La propuesta no modifica el documento.',
+      });
     }
   }
 
@@ -231,8 +212,8 @@ export function synthesizeDocumentView(input: DocumentSynthesisInput): DocumentS
           id: `int-noise-${counter++}`,
           original: trimmed,
           replacement: '',
-          author: 'LLAMA_3_2',
-          authorLabel: 'Llama 3.2 (IA)',
+          author: 'DETERMINISTIC_RULES',
+          authorLabel: 'Reglas Deterministas',
           category: 'NOISE_REMOVAL',
           categoryLabel: 'Eliminación de Ruido',
           reason: 'Ruido visual de escaneo depurado',
@@ -240,6 +221,26 @@ export function synthesizeDocumentView(input: DocumentSynthesisInput): DocumentS
         });
       }
     }
+  }
+
+  // 4b. Apply only safe, uniquely located lexical suggestions.
+  // The original OCR is immutable; rejected/ambiguous edits stay review-only.
+  const semanticApplication = input.mode === 'conventional'
+    ? { text: finalText, applied: [], reviewOnly: [] } as SemanticApplicationResult
+    : applySafeSemanticSuggestions(finalText, input.anomalies ?? []);
+  finalText = semanticApplication.text;
+  for (const change of semanticApplication.applied) {
+    interventions.push({
+      id: `int-llama-${counter++}`,
+      original: change.original,
+      replacement: change.corrected,
+      author: 'LLAMA_3_2',
+      authorLabel: 'Llama 3.2 (IA)',
+      category: 'TYPO_CORRECTION',
+      categoryLabel: 'Corrección Ortográfica/OCR',
+      reason: change.reason,
+      details: 'Sustitución léxica única y validada; la transcripción original se conserva.',
+    });
   }
 
   // 5. Build the Interactive Annotated HTML for the Review View
@@ -307,6 +308,7 @@ export function synthesizeDocumentView(input: DocumentSynthesisInput): DocumentS
     finalText,
     annotatedHtml,
     interventions,
+    reviewSuggestions: semanticApplication.reviewOnly,
     stats: {
       llamaCorrections: interventions.filter(i => i.author === 'LLAMA_3_2' && i.category !== 'NOISE_REMOVAL').length,
       ruleNormalizations: interventions.filter(i => i.author === 'DETERMINISTIC_RULES').length,

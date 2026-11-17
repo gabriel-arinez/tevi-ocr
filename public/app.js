@@ -165,6 +165,8 @@ const aiStatusLabel = document.getElementById('aiStatusLabel');
 const aiReviewPanel = document.getElementById('aiReviewPanel');
 const aiDocType = document.getElementById('aiDocType');
 const aiDocIntent = document.getElementById('aiDocIntent');
+const aiCorrectionSummary = document.getElementById('aiCorrectionSummary');
+const aiSuggestionResults = document.getElementById('aiSuggestionResults');
 const aiFieldsSection = document.getElementById('aiFieldsSection');
 const aiFieldsList = document.getElementById('aiFieldsList');
 const aiTelemetryBar = document.getElementById('aiTelemetryBar');
@@ -241,10 +243,12 @@ function clearAiReview() {
   if (!aiReviewPanel) return;
   aiReviewPanel.hidden = true;
   aiFieldsList?.replaceChildren();
+  aiSuggestionResults?.replaceChildren();
+  if (aiCorrectionSummary) aiCorrectionSummary.textContent = '';
   if (aiTelemetryBar) aiTelemetryBar.textContent = '';
 }
 
-function renderAiReview(aiReview) {
+function renderAiReview(aiReview, synthesis) {
   if (!aiReviewPanel || !aiReview) return;
 
   if (!aiReview.enabled && (!aiReview.anomalies || aiReview.anomalies.length === 0)) {
@@ -263,6 +267,30 @@ function renderAiReview(aiReview) {
   aiReviewPanel.hidden = false;
   aiDocType.textContent = aiReview.classification?.documentType || 'DOCUMENTO';
   aiDocIntent.textContent = aiReview.classification?.documentIntent || 'Documento procesado';
+  const appliedCount = synthesis?.stats?.llamaCorrections ?? 0;
+  const pendingCount = synthesis?.reviewSuggestions?.length ?? 0;
+  const evaluatedCount = aiReview.anomalies?.length ?? 0;
+  if (aiCorrectionSummary) {
+    aiCorrectionSummary.textContent = appliedCount > 0
+      ? `Llama aplicó ${appliedCount} corrección(es) léxica(s) delimitada(s). ${pendingCount} propuesta(s) requieren revisión. El OCR original sigue disponible.`
+      : `Llama evaluó ${evaluatedCount} candidato(s), pero no produjo correcciones aplicables con las salvaguardas actuales. ${pendingCount} propuesta(s) necesitan revisión; esto NO demuestra que el texto esté correcto.`;
+  }
+  aiSuggestionResults?.replaceChildren();
+  const candidates = (aiReview.anomalies ?? []).filter(item =>
+    item.status === 'SUGGESTED' ||
+    item.isProtectedField ||
+    item.rejectionReason === 'EDIT_DISTANCE_THRESHOLD_EXCEEDED');
+  for (const item of candidates.slice(0, 25)) {
+    const li = document.createElement('li');
+    li.textContent = `${item.originalText} → ${item.suggestedAlternative} · ${item.status === 'SUGGESTED' ? 'Propuesta de IA' : 'No aplicada: ' + (item.rejectionReason ?? 'requiere revisión')}`;
+    aiSuggestionResults?.append(li);
+  }
+  for (const item of synthesis?.reviewSuggestions ?? []) {
+    if (candidates.some(candidate => candidate.id === item.id)) continue;
+    const li = document.createElement('li');
+    li.textContent = `${item.original} → ${item.suggestion} · ${item.reason}`;
+    aiSuggestionResults?.append(li);
+  }
 
   const fields = (aiReview.extractedFields ?? []).filter(f => f.verified);
   if (fields.length > 0) {
@@ -271,7 +299,7 @@ function renderAiReview(aiReview) {
     for (const f of fields) {
       const chip = document.createElement('div');
       chip.className = 'ai-field-chip';
-      chip.innerHTML = `<strong>${f.fieldName}:</strong> <span>${f.value}</span> <small>("${f.exactOcrEvidence}")</small>`;
+      chip.textContent = `${f.fieldName}: ${f.value} (evidencia: ${f.exactOcrEvidence})`;
       aiFieldsList.append(chip);
     }
   } else {
@@ -411,7 +439,7 @@ function showPrintedText(view) {
     if (printedReviewNotice) {
       printedReviewNotice.hidden = false;
       if (printedTextState.interventions && printedTextState.interventions.length === 0) {
-        printedReviewNotice.textContent = 'Texto verificado: no se requirieron modificaciones (ni por reglas ni por IA).';
+        printedReviewNotice.textContent = 'No se aplicaron correcciones. Esto no garantiza que la transcripción esté libre de errores.';
       } else {
         printedReviewNotice.textContent = 'Pase el cursor sobre las palabras subrayadas en la vista de revisión para ver qué se modificó y por qué.';
       }
@@ -947,6 +975,7 @@ async function submitOcr(
     final: synthesis?.finalText || payload.ocr.structuredText || payload.ocr.readableText || payload.ocr.text,
     annotatedHtml: synthesis?.annotatedHtml || '',
     interventions: synthesis?.interventions || [],
+    reviewSuggestions: synthesis?.reviewSuggestions || [],
     current: 'final',
   };
 
@@ -980,7 +1009,7 @@ async function submitOcr(
   );
 
   if (payload.ocr.aiReview) {
-    renderAiReview(payload.ocr.aiReview);
+    renderAiReview(payload.ocr.aiReview, synthesis);
   }
 
   if (metadataResult) {

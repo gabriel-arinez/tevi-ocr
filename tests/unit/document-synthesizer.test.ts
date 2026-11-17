@@ -24,6 +24,7 @@ describe('DocumentSynthesizer', () => {
           id: 'w1',
           originalText: 'revlsión',
           suggestedAlternative: 'revisión',
+          lineContext: 'Por medio de la presente, se solicita la revlsión de funciones.',
           reason: 'error OCR',
           charDistance: 1,
           isProtectedField: false,

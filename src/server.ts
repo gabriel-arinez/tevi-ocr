@@ -46,7 +46,7 @@ import {
 import { buildPrintedTextView } from './ocr/printed-document-layout.js';
 import { buildGeometricReadingView } from './ocr/printed-geometric-layout.js';
 import { prepareRegionForSecondReading } from './ocr/printed-region-review.js';
-import type { PrintedSpatialWord } from './ocr/printed-spatial-evidence.js';
+import { contextualizeLowConfidenceWords, type PrintedSpatialWord } from './ocr/printed-spatial-evidence.js';
 import { shutdownDefaultWorkerPool } from './ocr/tesseract-worker-pool.js';
 import { getDefaultOllamaClient } from './ai/ollama-client.js';
 import {
@@ -569,18 +569,9 @@ app.post(
         return words.length > 0 ? buildGeometricReadingView(words).text : buildPrintedTextView(page.text).readable;
       }).join('\n\n');
 
-      const allLowConfidenceWords = pageResults.flatMap((page) => {
-        const pageLines = page.text.split('\n');
-        return (page.spatialEvidence?.lowConfidenceWords ?? []).map((w, idx) => {
-          const matchingLine = pageLines.find((line) => line.includes(w.text)) ?? page.text.slice(0, 100);
-          return {
-            id: `p${page.pageNumber}-w${idx + 1}`,
-            text: w.text,
-            confidence: w.confidence,
-            lineText: matchingLine.trim(),
-          };
-        });
-      });
+      const allLowConfidenceWords = pageResults.flatMap((page) =>
+        contextualizeLowConfidenceWords(page.spatialEvidence?.words ?? [], page.pageNumber)
+      );
 
       const targetOcrText = structuredText || combinedRawText;
       const { effectiveAiMode, aiReview, documentSynthesis } =

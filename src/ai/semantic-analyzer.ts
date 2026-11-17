@@ -65,6 +65,7 @@ export interface SemanticAnalysisResult {
   restorationChanges?: DocumentRestorationChange[];
   telemetry?: OllamaTelemetry;
   error?: string;
+  warnings?: string[];
 }
 
 export interface WordContextItem {
@@ -755,6 +756,23 @@ export class SemanticAnalyzer {
       };
     }
 
+    // Only candidate IDs actually sent to the model may become suggestions.
+    // Never accept an invented ID or a word substituted for the candidate.
+    if (!candidate || normalizeTokenKey(candidate.text) !== normalizeTokenKey(originalTrimmed)) {
+      return {
+        id: suggestion.id,
+        originalText: originalTrimmed,
+        suggestedAlternative: suggestedTrimmed,
+        decision,
+        reason: suggestion.reason,
+        charDistance: dist,
+        isProtectedField: isProtected,
+        status: 'REJECTED',
+        rejectionReason: !candidate ? 'UNKNOWN_CANDIDATE_ID' : 'CANDIDATE_TEXT_MISMATCH',
+        lineContext,
+      };
+    }
+
     return {
       id: suggestion.id,
       originalText: originalTrimmed,
@@ -776,7 +794,12 @@ export class SemanticAnalyzer {
     rawText: string,
   ): SemanticExtractedField {
     const trimmedEvidence = field.evidence.trim();
-    const verified = trimmedEvidence.length > 0 && rawText.includes(trimmedEvidence);
+    const trimmedValue = field.value.trim();
+    const escapedValue = trimmedValue.replace(/[.*+?^${}()|[\]\\]/g, '\\    const verified = trimmedEvidence.length > 0 && rawText.includes(trimmedEvidence);');
+    const valuePattern = new RegExp('(?<![\\p{L}\\p{N}])' + escapedValue +
+      '(?![\\p{L}\\p{N}])', 'u');
+    const verified = trimmedEvidence.length > 0 && trimmedValue.length > 0 &&
+      rawText.includes(trimmedEvidence) && valuePattern.test(trimmedEvidence);
 
     return {
       fieldName: field.fieldName.trim(),
@@ -873,7 +896,10 @@ export class SemanticAnalyzer {
       numCtx: 1024,
     });
 
-    const parsedEvaluations = chatResponse.parsed?.evaluations ??
+    if (!chatResponse.parsed || !Array.isArray(chatResponse.parsed.evaluations)) {
+      throw new Error('OLLAMA_ANOMALY_RESPONSE_INVALID');
+    }
+    const parsedEvaluations = chatResponse.parsed.evaluations ??
       (chatResponse.parsed?.suggestions ?? []).map(s => ({
         id: s.id,
         decision: 'CORRECTION' as SemanticAnomalyDecision,
@@ -977,7 +1003,12 @@ export class SemanticAnalyzer {
       numCtx: 1024,
     });
 
-    const parsed = chatResponse.parsed ?? {};
+    if (!chatResponse.parsed ||
+        !Array.isArray(chatResponse.parsed.fields) ||
+        typeof chatResponse.parsed.documentType !== 'string') {
+      throw new Error('OLLAMA_CLASSIFICATION_RESPONSE_INVALID');
+    }
+    const parsed = chatResponse.parsed;
     const documentType = parsed.documentType ?? 'OTRO';
     const documentIntent = (parsed.documentIntent ?? 'Análisis completado').slice(0, 150);
 
@@ -1135,11 +1166,33 @@ export class SemanticAnalyzer {
 
       const textSample = (input.readableText || input.rawText).slice(0, 800);
 
-      // Execute specialized passes for backward compatibility
-      const [anomalyResult, classResult] = await Promise.all([
+      // Independent passes: a classification failure must not erase valid
+      // corrections from the anomaly reviewer (and vice versa).
+      const [anomalyAttempt, classificationAttempt] = await Promise.allSettled([
         this.evaluateAnomalies(candidateList, input.rawText, { numPredict: 256 }),
         this.classifyAndExtractFields(textSample, input.rawText, { numPredict: 256 }),
       ]);
+      if (anomalyAttempt.status === 'rejected' && classificationAttempt.status === 'rejected') {
+        const cause = anomalyAttempt.reason;
+        throw new Error(cause instanceof Error ? cause.message : 'OLLAMA_BOTH_ANALYSES_FAILED');
+      }
+      const anomalyResult = anomalyAttempt.status === 'fulfilled'
+        ? anomalyAttempt.value
+        : { anomalies: [] as SemanticAnomaly[], telemetry: undefined };
+      const classResult = classificationAttempt.status === 'fulfilled'
+        ? classificationAttempt.value
+        : {
+            classification: {
+              documentType: 'OTRO' as DocumentTypeCategory,
+              documentIntent: 'Clasificación no disponible',
+              confidence: 0,
+            },
+            extractedFields: [] as SemanticExtractedField[],
+            telemetry: undefined,
+          };
+      const warnings: string[] = [];
+      if (anomalyAttempt.status === 'rejected') warnings.push('ANOMALY_REVIEW_UNAVAILABLE');
+      if (classificationAttempt.status === 'rejected') warnings.push('DOCUMENT_CLASSIFICATION_UNAVAILABLE');
 
       const det = restoreDocumentDeterministically(input.rawText);
 
@@ -1169,6 +1222,7 @@ export class SemanticAnalyzer {
         classification: classResult.classification,
         anomalies: anomalyResult.anomalies,
         extractedFields: classResult.extractedFields,
+        warnings,
         restoredText: det.restoredText,
         restorationChanges: det.changes,
         telemetry,

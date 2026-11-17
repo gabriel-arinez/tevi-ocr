@@ -207,6 +207,18 @@
         <pre id="ocrResult" class="result"></pre>
         <div id="ocrAuditResult" class="result audit-rendered" hidden></div>
       </div>
+
+      <section id="aiReviewPanel" class="ai-panel" hidden aria-live="polite">
+        <h3>Resultado del análisis con Llama 3.2</h3>
+        <p><strong id="aiDocType">Sin análisis</strong> · <span id="aiDocIntent"></span></p>
+        <p id="aiCorrectionSummary" class="ocr-note"></p>
+        <ul id="aiSuggestionResults" class="ocr-evidence-list"></ul>
+        <div id="aiFieldsSection" hidden>
+          <h4>Campos encontrados con evidencia</h4>
+          <div id="aiFieldsList"></div>
+        </div>
+        <p id="aiTelemetryBar" class="ocr-note"></p>
+      </section>
     </section>
 
     <section
