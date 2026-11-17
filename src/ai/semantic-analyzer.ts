@@ -1173,7 +1173,8 @@ export class SemanticAnalyzer {
         this.classifyAndExtractFields(textSample, input.rawText, { numPredict: 256 }),
       ]);
       if (anomalyAttempt.status === 'rejected' && classificationAttempt.status === 'rejected') {
-        throw new Error('OLLAMA_BOTH_ANALYSES_FAILED');
+        const cause = anomalyAttempt.reason;
+        throw new Error(cause instanceof Error ? cause.message : 'OLLAMA_BOTH_ANALYSES_FAILED');
       }
       const anomalyResult = anomalyAttempt.status === 'fulfilled'
         ? anomalyAttempt.value
